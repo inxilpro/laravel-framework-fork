@@ -391,46 +391,6 @@ class MorphTo extends BelongsTo
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function select($columns = ['*'])
-    {
-        $this->macroBuffer[] = ['method' => 'select', 'parameters' => [$columns]];
-
-        return parent::select($columns);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function selectRaw($expression, array $bindings = [])
-    {
-        $this->macroBuffer[] = ['method' => 'selectRaw', 'parameters' => [$expression, $bindings]];
-
-        return parent::selectRaw($expression, $bindings);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function selectSub($query, $as)
-    {
-        $this->macroBuffer[] = ['method' => 'selectSub', 'parameters' => [$query, $as]];
-
-        return parent::selectSub($query, $as);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function addSelect($column)
-    {
-        $this->macroBuffer[] = ['method' => 'addSelect', 'parameters' => [$column]];
-
-        return parent::addSelect($column);
-    }
-
-    /**
      * Replay stored macro calls on the actual related instance.
      *
      * @param  \Illuminate\Database\Eloquent\Builder  $query
