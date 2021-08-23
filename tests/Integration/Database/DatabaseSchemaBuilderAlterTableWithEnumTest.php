@@ -4,6 +4,7 @@ namespace Illuminate\Tests\Integration\Database;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use stdClass;
 
 class DatabaseSchemaBuilderAlterTableWithEnumTest extends DatabaseMySqlTestCase
 {
@@ -22,7 +23,27 @@ class DatabaseSchemaBuilderAlterTableWithEnumTest extends DatabaseMySqlTestCase
             $table->unsignedInteger('age')->charset('')->change();
         });
 
-        $this->assertEquals('integer', Schema::getColumnType('users', 'age'));
+        $this->assertSame('integer', Schema::getColumnType('users', 'age'));
+    }
+
+    public function testGetAllTablesAndColumnListing()
+    {
+        $tables = Schema::getAllTables();
+
+        $this->assertCount(1, $tables);
+        $this->assertInstanceOf(stdClass::class, $tables[0]);
+
+        $tableProperties = array_values((array) $tables[0]);
+        $this->assertEquals(['users', 'BASE TABLE'], $tableProperties);
+        $this->assertEquals(['id', 'name', 'age', 'color'], Schema::getColumnListing('users'));
+
+        Schema::create('posts', function (Blueprint $table) {
+            $table->integer('id');
+            $table->string('title');
+        });
+        $tables = Schema::getAllTables();
+        $this->assertCount(2, $tables);
+        Schema::drop('posts');
     }
 
     protected function setUp(): void

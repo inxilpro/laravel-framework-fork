@@ -32,8 +32,8 @@ class QueueDatabaseQueueIntegrationTest extends TestCase
         $db = new DB;
 
         $db->addConnection([
-            'driver'    => 'sqlite',
-            'database'  => ':memory:',
+            'driver' => 'sqlite',
+            'database' => ':memory:',
         ]);
 
         $db->bootEloquent();
@@ -145,6 +145,35 @@ class QueueDatabaseQueueIntegrationTest extends TestCase
 
         $this->assertEquals(1, $database_record->attempts, 'Job attempts not updated in the database!');
         $this->assertEquals(1, $popped_job->attempts(), 'The "attempts" attribute of the Job object was not updated by pop!');
+    }
+
+    /**
+     * Test that the queue can be cleared.
+     */
+    public function testThatQueueCanBeCleared()
+    {
+        $this->connection()
+            ->table('jobs')
+            ->insert([[
+                'id' => 1,
+                'queue' => $mock_queue_name = 'mock_queue_name',
+                'payload' => 'mock_payload',
+                'attempts' => 0,
+                'reserved_at' => Carbon::now()->addDay()->getTimestamp(),
+                'available_at' => Carbon::now()->subDay()->getTimestamp(),
+                'created_at' => Carbon::now()->getTimestamp(),
+            ], [
+                'id' => 2,
+                'queue' => $mock_queue_name,
+                'payload' => 'mock_payload 2',
+                'attempts' => 0,
+                'reserved_at' => null,
+                'available_at' => Carbon::now()->subSeconds(1)->getTimestamp(),
+                'created_at' => Carbon::now()->getTimestamp(),
+            ]]);
+
+        $this->assertEquals(2, $this->queue->clear($mock_queue_name));
+        $this->assertEquals(0, $this->queue->size());
     }
 
     /**

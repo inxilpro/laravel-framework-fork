@@ -13,6 +13,8 @@ class ViewComponentAttributeBagTest extends TestCase
 
         $this->assertSame('class="font-bold"', (string) $bag->whereStartsWith('class'));
         $this->assertSame('font-bold', (string) $bag->whereStartsWith('class')->first());
+        $this->assertSame('name="test"', (string) $bag->whereDoesntStartWith('class'));
+        $this->assertSame('test', (string) $bag->whereDoesntStartWith('class')->first());
         $this->assertSame('class="mt-4 font-bold" name="test"', (string) $bag->merge(['class' => 'mt-4']));
         $this->assertSame('class="mt-4 font-bold" name="test"', (string) $bag->merge(['class' => 'mt-4', 'name' => 'foo']));
         $this->assertSame('class="mt-4 font-bold" id="bar" name="test"', (string) $bag->merge(['class' => 'mt-4', 'id' => 'bar']));
@@ -25,6 +27,9 @@ class ViewComponentAttributeBagTest extends TestCase
         $this->assertSame('font-bold', $bag->get('class'));
         $this->assertSame('bar', $bag->get('foo', 'bar'));
         $this->assertSame('font-bold', $bag['class']);
+        $this->assertSame('class="mt-4 font-bold" name="test"', (string) $bag->class('mt-4'));
+        $this->assertSame('class="mt-4 font-bold" name="test"', (string) $bag->class(['mt-4']));
+        $this->assertSame('class="mt-4 ml-2 font-bold" name="test"', (string) $bag->class(['mt-4', 'ml-2' => true, 'mr-2' => false]));
 
         $bag = new ComponentAttributeBag([]);
 
@@ -62,5 +67,31 @@ class ViewComponentAttributeBagTest extends TestCase
             ]);
 
         $this->assertSame('test-string="ok" test-true="test-true" test-0="0" test-0-string="0" test-empty-string=""', (string) $bag);
+
+        $bag = (new ComponentAttributeBag)
+            ->merge([
+                'test-extract-1' => 'extracted-1',
+                'test-extract-2' => 'extracted-2',
+                'test-discard-1' => 'discarded-1',
+                'test-discard-2' => 'discarded-2',
+            ]);
+
+        $this->assertSame('test-extract-1="extracted-1" test-extract-2="extracted-2"', (string) $bag->exceptProps([
+            'test-discard-1',
+            'test-discard-2' => 'defaultValue',
+        ]));
+
+        $bag = (new ComponentAttributeBag)
+            ->merge([
+                'test-extract-1' => 'extracted-1',
+                'test-extract-2' => 'extracted-2',
+                'test-discard-1' => 'discarded-1',
+                'test-discard-2' => 'discarded-2',
+            ]);
+
+        $this->assertSame('test-extract-1="extracted-1" test-extract-2="extracted-2"', (string) $bag->onlyProps([
+            'test-extract-1',
+            'test-extract-2' => 'defaultValue',
+        ]));
     }
 }

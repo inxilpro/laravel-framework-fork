@@ -304,7 +304,7 @@ class HttpRequestTest extends TestCase
     {
         $request = Request::create('/', 'GET', ['name' => 'Taylor', 'age' => '', 'city' => null]);
 
-        $name = $age = $city = $foo = false;
+        $name = $age = $city = $foo = $bar = false;
 
         $request->whenHas('name', function ($value) use (&$name) {
             $name = $value;
@@ -322,17 +322,24 @@ class HttpRequestTest extends TestCase
             $foo = 'test';
         });
 
+        $request->whenHas('bar', function () use (&$bar) {
+            $bar = 'test';
+        }, function () use (&$bar) {
+            $bar = true;
+        });
+
         $this->assertSame('Taylor', $name);
         $this->assertSame('', $age);
         $this->assertNull($city);
         $this->assertFalse($foo);
+        $this->assertTrue($bar);
     }
 
     public function testWhenFilledMethod()
     {
         $request = Request::create('/', 'GET', ['name' => 'Taylor', 'age' => '', 'city' => null]);
 
-        $name = $age = $city = $foo = false;
+        $name = $age = $city = $foo = $bar = false;
 
         $request->whenFilled('name', function ($value) use (&$name) {
             $name = $value;
@@ -350,10 +357,17 @@ class HttpRequestTest extends TestCase
             $foo = 'test';
         });
 
+        $request->whenFilled('bar', function () use (&$bar) {
+            $bar = 'test';
+        }, function () use (&$bar) {
+            $bar = true;
+        });
+
         $this->assertSame('Taylor', $name);
         $this->assertFalse($age);
         $this->assertFalse($city);
         $this->assertFalse($foo);
+        $this->assertTrue($bar);
     }
 
     public function testMissingMethod()
@@ -501,8 +515,8 @@ class HttpRequestTest extends TestCase
             return $route;
         });
 
-        $this->assertFalse(isset($request['non-existant']));
-        $this->assertNull($request['non-existant']);
+        $this->assertFalse(isset($request['non-existent']));
+        $this->assertNull($request['non-existent']);
 
         $this->assertTrue(isset($request['name']));
         $this->assertNull($request['name']);
@@ -679,6 +693,15 @@ class HttpRequestTest extends TestCase
         $this->assertSame('foo', $request->header('do-this'));
         $all = $request->header(null);
         $this->assertSame('foo', $all['do-this'][0]);
+    }
+
+    public function testBearerTokenMethod()
+    {
+        $request = Request::create('/', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Bearer foo']);
+        $this->assertSame('foo', $request->bearerToken());
+
+        $request = Request::create('/', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Basic foo, Bearer bar']);
+        $this->assertSame('bar', $request->bearerToken());
     }
 
     public function testJSONMethod()
@@ -993,7 +1016,12 @@ class HttpRequestTest extends TestCase
         $request->fingerprint();
     }
 
-    public function testCreateFromBase()
+    /**
+     * Ensure JSON GET requests populate $request->request with the JSON content.
+     *
+     * @link https://github.com/laravel/framework/pull/7052 Correctly fill the $request->request parameter bag on creation.
+     */
+    public function testJsonRequestFillsRequestBodyParams()
     {
         $body = [
             'foo' => 'bar',
@@ -1012,6 +1040,24 @@ class HttpRequestTest extends TestCase
     }
 
     /**
+     * Ensure non-JSON GET requests don't pollute $request->request with the GET parameters.
+     *
+     * @link https://github.com/laravel/framework/pull/37921 Manually populate POST request body with JSON data only when required.
+     */
+    public function testNonJsonRequestDoesntFillRequestBodyParams()
+    {
+        $params = ['foo' => 'bar'];
+
+        $getRequest = Request::create('/', 'GET', $params, [], [], []);
+        $this->assertEquals($getRequest->request->all(), []);
+        $this->assertEquals($getRequest->query->all(), $params);
+
+        $postRequest = Request::create('/', 'POST', $params, [], [], []);
+        $this->assertEquals($postRequest->request->all(), $params);
+        $this->assertEquals($postRequest->query->all(), []);
+    }
+
+    /**
      * Tests for Http\Request magic methods `__get()` and `__isset()`.
      *
      * @link https://github.com/laravel/framework/issues/10403 Form request object attribute returns empty when have some string.
@@ -1022,19 +1068,19 @@ class HttpRequestTest extends TestCase
         $request = Request::create('/', 'GET', ['foo' => 'bar', 'empty' => '']);
 
         // Parameter 'foo' is 'bar', then it ISSET and is NOT EMPTY.
-        $this->assertEquals($request->foo, 'bar');
-        $this->assertEquals(isset($request->foo), true);
-        $this->assertEquals(empty($request->foo), false);
+        $this->assertSame('bar', $request->foo);
+        $this->assertTrue(isset($request->foo));
+        $this->assertNotEmpty($request->foo);
 
         // Parameter 'empty' is '', then it ISSET and is EMPTY.
-        $this->assertEquals($request->empty, '');
+        $this->assertSame('', $request->empty);
         $this->assertTrue(isset($request->empty));
         $this->assertEmpty($request->empty);
 
         // Parameter 'undefined' is undefined/null, then it NOT ISSET and is EMPTY.
-        $this->assertEquals($request->undefined, null);
-        $this->assertEquals(isset($request->undefined), false);
-        $this->assertEquals(empty($request->undefined), true);
+        $this->assertNull($request->undefined);
+        $this->assertFalse(isset($request->undefined));
+        $this->assertEmpty($request->undefined);
 
         // Simulates Route parameters.
         $request = Request::create('/example/bar', 'GET', ['xyz' => 'overwritten']);
@@ -1048,19 +1094,19 @@ class HttpRequestTest extends TestCase
         // Router parameter 'foo' is 'bar', then it ISSET and is NOT EMPTY.
         $this->assertSame('bar', $request->foo);
         $this->assertSame('bar', $request['foo']);
-        $this->assertEquals(isset($request->foo), true);
-        $this->assertEquals(empty($request->foo), false);
+        $this->assertTrue(isset($request->foo));
+        $this->assertNotEmpty($request->foo);
 
         // Router parameter 'undefined' is undefined/null, then it NOT ISSET and is EMPTY.
-        $this->assertEquals($request->undefined, null);
-        $this->assertEquals(isset($request->undefined), false);
-        $this->assertEquals(empty($request->undefined), true);
+        $this->assertNull($request->undefined);
+        $this->assertFalse(isset($request->undefined));
+        $this->assertEmpty($request->undefined);
 
         // Special case: router parameter 'xyz' is 'overwritten' by QueryString, then it ISSET and is NOT EMPTY.
         // Basically, QueryStrings have priority over router parameters.
-        $this->assertEquals($request->xyz, 'overwritten');
-        $this->assertEquals(isset($request->foo), true);
-        $this->assertEquals(empty($request->foo), false);
+        $this->assertSame('overwritten', $request->xyz);
+        $this->assertTrue(isset($request->foo));
+        $this->assertNotEmpty($request->foo);
 
         // Simulates empty QueryString and Routes.
         $request = Request::create('/', 'GET');
@@ -1072,18 +1118,18 @@ class HttpRequestTest extends TestCase
         });
 
         // Parameter 'undefined' is undefined/null, then it NOT ISSET and is EMPTY.
-        $this->assertEquals($request->undefined, null);
-        $this->assertEquals(isset($request->undefined), false);
-        $this->assertEquals(empty($request->undefined), true);
+        $this->assertNull($request->undefined);
+        $this->assertFalse(isset($request->undefined));
+        $this->assertEmpty($request->undefined);
 
         // Special case: simulates empty QueryString and Routes, without the Route Resolver.
         // It'll happen when you try to get a parameter outside a route.
         $request = Request::create('/', 'GET');
 
         // Parameter 'undefined' is undefined/null, then it NOT ISSET and is EMPTY.
-        $this->assertEquals($request->undefined, null);
-        $this->assertEquals(isset($request->undefined), false);
-        $this->assertEquals(empty($request->undefined), true);
+        $this->assertNull($request->undefined);
+        $this->assertFalse(isset($request->undefined));
+        $this->assertEmpty($request->undefined);
     }
 
     public function testHttpRequestFlashCallsSessionFlashInputWithInputData()

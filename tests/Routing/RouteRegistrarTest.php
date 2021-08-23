@@ -149,6 +149,25 @@ class RouteRegistrarTest extends TestCase
         $this->seeMiddleware('controller-middleware');
     }
 
+    public function testCanRegisterNamespacedGroupRouteWithControllerActionArray()
+    {
+        $this->router->group(['namespace' => 'WhatEver'], function () {
+            $this->router->middleware('controller-middleware')
+                ->get('users', [RouteRegistrarControllerStub::class, 'index']);
+        });
+
+        $this->seeResponse('controller', Request::create('users', 'GET'));
+        $this->seeMiddleware('controller-middleware');
+
+        $this->router->group(['namespace' => 'WhatEver'], function () {
+            $this->router->middleware('controller-middleware')
+                ->get('users', ['\\'.RouteRegistrarControllerStub::class, 'index']);
+        });
+
+        $this->seeResponse('controller', Request::create('users', 'GET'));
+        $this->seeMiddleware('controller-middleware');
+    }
+
     public function testCanRegisterRouteWithArrayAndControllerAction()
     {
         $this->router->middleware('controller-middleware')->put('users', [
@@ -253,9 +272,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterResourcesWithExceptOption()
     {
         $this->router->resources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ], ['except' => ['create', 'show']]);
 
         $this->assertCount(15, $this->router->getRoutes());
@@ -275,9 +294,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterResourcesWithOnlyOption()
     {
         $this->router->resources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ], ['only' => ['create', 'show']]);
 
         $this->assertCount(6, $this->router->getRoutes());
@@ -297,9 +316,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterResourcesWithoutOption()
     {
         $this->router->resources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ]);
 
         $this->assertCount(21, $this->router->getRoutes());
@@ -313,6 +332,24 @@ class RouteRegistrarTest extends TestCase
             $this->assertTrue($this->router->getRoutes()->hasNamedRoute('resource-'.$resource.'.update'));
             $this->assertTrue($this->router->getRoutes()->hasNamedRoute('resource-'.$resource.'.destroy'));
         }
+    }
+
+    public function testCanRegisterResourceWithMissingOption()
+    {
+        $this->router->middleware('resource-middleware')
+            ->resource('users', RouteRegistrarControllerStub::class)
+            ->missing(function () {
+                return 'missing';
+            });
+
+        $this->assertIsCallable($this->router->getRoutes()->getByName('users.show')->getMissing());
+        $this->assertIsCallable($this->router->getRoutes()->getByName('users.edit')->getMissing());
+        $this->assertIsCallable($this->router->getRoutes()->getByName('users.update')->getMissing());
+        $this->assertIsCallable($this->router->getRoutes()->getByName('users.destroy')->getMissing());
+
+        $this->assertNull($this->router->getRoutes()->getByName('users.index')->getMissing());
+        $this->assertNull($this->router->getRoutes()->getByName('users.create')->getMissing());
+        $this->assertNull($this->router->getRoutes()->getByName('users.store')->getMissing());
     }
 
     public function testCanAccessRegisteredResourceRoutesAsRouteCollection()
@@ -405,9 +442,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterApiResourcesWithExceptOption()
     {
         $this->router->apiResources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ], ['except' => ['create', 'show']]);
 
         $this->assertCount(12, $this->router->getRoutes());
@@ -427,9 +464,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterApiResourcesWithOnlyOption()
     {
         $this->router->apiResources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ], ['only' => ['index', 'show']]);
 
         $this->assertCount(6, $this->router->getRoutes());
@@ -449,9 +486,9 @@ class RouteRegistrarTest extends TestCase
     public function testCanRegisterApiResourcesWithoutOption()
     {
         $this->router->apiResources([
-            'resource-one'      => RouteRegistrarControllerStubOne::class,
-            'resource-two'      => RouteRegistrarControllerStubTwo::class,
-            'resource-three'    => RouteRegistrarControllerStubThree::class,
+            'resource-one' => RouteRegistrarControllerStubOne::class,
+            'resource-two' => RouteRegistrarControllerStubTwo::class,
+            'resource-three' => RouteRegistrarControllerStubThree::class,
         ]);
 
         $this->assertCount(15, $this->router->getRoutes());
@@ -568,6 +605,44 @@ class RouteRegistrarTest extends TestCase
 
         $this->router->resource('users', RouteRegistrarControllerStub::class)
                      ->where($wheres);
+
+        /** @var \Illuminate\Routing\Route $route */
+        foreach ($this->router->getRoutes() as $route) {
+            $this->assertEquals($wheres, $route->wheres);
+        }
+    }
+
+    public function testWhereNumberRegistration()
+    {
+        $wheres = ['foo' => '[0-9]+', 'bar' => '[0-9]+'];
+
+        $this->router->get('/{foo}/{bar}')->whereNumber(['foo', 'bar']);
+        $this->router->get('/api/{bar}/{foo}')->whereNumber(['bar', 'foo']);
+
+        /** @var \Illuminate\Routing\Route $route */
+        foreach ($this->router->getRoutes() as $route) {
+            $this->assertEquals($wheres, $route->wheres);
+        }
+    }
+
+    public function testWhereAlphaRegistration()
+    {
+        $wheres = ['foo' => '[a-zA-Z]+', 'bar' => '[a-zA-Z]+'];
+
+        $this->router->get('/{foo}/{bar}')->whereAlpha(['foo', 'bar']);
+        $this->router->get('/api/{bar}/{foo}')->whereAlpha(['bar', 'foo']);
+
+        /** @var \Illuminate\Routing\Route $route */
+        foreach ($this->router->getRoutes() as $route) {
+            $this->assertEquals($wheres, $route->wheres);
+        }
+    }
+
+    public function testWhereAlphaNumericRegistration()
+    {
+        $wheres = ['1a2b3c' => '[a-zA-Z0-9]+'];
+
+        $this->router->get('/{foo}')->whereAlphaNumeric(['1a2b3c']);
 
         /** @var \Illuminate\Routing\Route $route */
         foreach ($this->router->getRoutes() as $route) {

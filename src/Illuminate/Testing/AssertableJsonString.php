@@ -3,13 +3,14 @@
 namespace Illuminate\Testing;
 
 use ArrayAccess;
+use Countable;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Testing\Assert as PHPUnit;
 use JsonSerializable;
 
-class AssertableJsonString implements ArrayAccess
+class AssertableJsonString implements ArrayAccess, Countable
 {
     /**
      * The original encoded json.
@@ -28,7 +29,7 @@ class AssertableJsonString implements ArrayAccess
     /**
      * Create a new assertable JSON string instance.
      *
-     * @param  \Illuminate\Contracts\Support\Jsonable|\JsonSerializable|string  $jsonable
+     * @param  \Illuminate\Contracts\Support\Jsonable|\JsonSerializable|array|string  $jsonable
      * @return void
      */
     public function __construct($jsonable)
@@ -275,8 +276,7 @@ class AssertableJsonString implements ArrayAccess
     /**
      * Reorder associative array keys to make it easy to compare arrays.
      *
-     * @param array $data
-     *
+     * @param  array  $data
      * @return array
      */
     protected function reorderAssocKeys(array $data)
@@ -330,11 +330,23 @@ class AssertableJsonString implements ArrayAccess
     }
 
     /**
+     * Get the total number of items in the underlying JSON array.
+     *
+     * @return int
+     */
+    #[\ReturnTypeWillChange]
+    public function count()
+    {
+        return count($this->decoded);
+    }
+
+    /**
      * Determine whether an offset exists.
      *
      * @param  mixed  $offset
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function offsetExists($offset)
     {
         return isset($this->decoded[$offset]);
@@ -346,6 +358,7 @@ class AssertableJsonString implements ArrayAccess
      * @param  string  $offset
      * @return mixed
      */
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         return $this->decoded[$offset];
@@ -358,6 +371,7 @@ class AssertableJsonString implements ArrayAccess
      * @param  mixed  $value
      * @return void
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         $this->decoded[$offset] = $value;
@@ -369,6 +383,7 @@ class AssertableJsonString implements ArrayAccess
      * @param  string  $offset
      * @return void
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         unset($this->decoded[$offset]);

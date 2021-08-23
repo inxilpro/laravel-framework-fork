@@ -11,7 +11,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Enumerable;
 use Illuminate\Support\HigherOrderCollectionProxy;
-use Illuminate\Support\HigherOrderWhenProxy;
 use JsonSerializable;
 use Symfony\Component\VarDumper\VarDumper;
 use Traversable;
@@ -32,19 +31,27 @@ use Traversable;
  * @property-read HigherOrderCollectionProxy $min
  * @property-read HigherOrderCollectionProxy $partition
  * @property-read HigherOrderCollectionProxy $reject
+ * @property-read HigherOrderCollectionProxy $skipUntil
+ * @property-read HigherOrderCollectionProxy $skipWhile
  * @property-read HigherOrderCollectionProxy $some
  * @property-read HigherOrderCollectionProxy $sortBy
  * @property-read HigherOrderCollectionProxy $sortByDesc
  * @property-read HigherOrderCollectionProxy $sum
+ * @property-read HigherOrderCollectionProxy $takeUntil
+ * @property-read HigherOrderCollectionProxy $takeWhile
  * @property-read HigherOrderCollectionProxy $unique
+ * @property-read HigherOrderCollectionProxy $unless
  * @property-read HigherOrderCollectionProxy $until
+ * @property-read HigherOrderCollectionProxy $when
  */
 trait EnumeratesValues
 {
+    use Conditionable;
+
     /**
      * The methods that can be proxied.
      *
-     * @var array
+     * @var string[]
      */
     protected static $proxies = [
         'average',
@@ -71,7 +78,9 @@ trait EnumeratesValues
         'takeUntil',
         'takeWhile',
         'unique',
+        'unless',
         'until',
+        'when',
     ];
 
     /**
@@ -107,6 +116,34 @@ trait EnumeratesValues
     public static function unwrap($value)
     {
         return $value instanceof Enumerable ? $value->all() : $value;
+    }
+
+    /**
+     * Create a new instance with no items.
+     *
+     * @return static
+     */
+    public static function empty()
+    {
+        return new static([]);
+    }
+
+    /**
+     * Create a new collection by invoking the callback a given amount of times.
+     *
+     * @param  int  $number
+     * @param  callable|null  $callback
+     * @return static
+     */
+    public static function times($number, callable $callback = null)
+    {
+        if ($number < 1) {
+            return new static;
+        }
+
+        return static::range(1, $number)
+            ->unless($callback == null)
+            ->map($callback);
     }
 
     /**
@@ -169,7 +206,7 @@ trait EnumeratesValues
      */
     public function dd(...$args)
     {
-        call_user_func_array([$this, 'dump'], $args);
+        $this->dump(...$args);
 
         exit(1);
     }
@@ -422,29 +459,6 @@ trait EnumeratesValues
     }
 
     /**
-     * Apply the callback if the value is truthy.
-     *
-     * @param  bool|mixed  $value
-     * @param  callable|null  $callback
-     * @param  callable|null  $default
-     * @return static|mixed
-     */
-    public function when($value, callable $callback = null, callable $default = null)
-    {
-        if (! $callback) {
-            return new HigherOrderWhenProxy($this, $value);
-        }
-
-        if ($value) {
-            return $callback($this, $value);
-        } elseif ($default) {
-            return $default($this, $value);
-        }
-
-        return $this;
-    }
-
-    /**
      * Apply the callback if the collection is empty.
      *
      * @param  callable  $callback
@@ -466,19 +480,6 @@ trait EnumeratesValues
     public function whenNotEmpty(callable $callback, callable $default = null)
     {
         return $this->when($this->isNotEmpty(), $callback, $default);
-    }
-
-    /**
-     * Apply the callback if the value is falsy.
-     *
-     * @param  bool  $value
-     * @param  callable  $callback
-     * @param  callable|null  $default
-     * @return static|mixed
-     */
-    public function unless($value, callable $callback, callable $default = null)
-    {
-        return $this->when(! $value, $callback, $default);
     }
 
     /**
@@ -637,14 +638,24 @@ trait EnumeratesValues
     }
 
     /**
-     * Filter the items, removing any items that don't match the given type.
+     * Filter the items, removing any items that don't match the given type(s).
      *
-     * @param  string  $type
+     * @param  string|string[]  $type
      * @return static
      */
     public function whereInstanceOf($type)
     {
         return $this->filter(function ($value) use ($type) {
+            if (is_array($type)) {
+                foreach ($type as $classType) {
+                    if ($value instanceof $classType) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             return $value instanceof $type;
         });
     }
@@ -661,16 +672,44 @@ trait EnumeratesValues
     }
 
     /**
-     * Pass the collection to the given callback and then return it.
+     * Pass the collection into a new class.
+     *
+     * @param  string  $class
+     * @return mixed
+     */
+    public function pipeInto($class)
+    {
+        return new $class($this);
+    }
+
+    /**
+     * Reduce the collection to a single value.
      *
      * @param  callable  $callback
-     * @return $this
+     * @param  mixed  $initial
+     * @return mixed
      */
-    public function tap(callable $callback)
+    public function reduce(callable $callback, $initial = null)
     {
-        $callback(clone $this);
+        $result = $initial;
 
-        return $this;
+        foreach ($this as $key => $value) {
+            $result = $callback($result, $value, $key);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Reduce an associative collection to a single value.
+     *
+     * @param  callable  $callback
+     * @param  mixed  $initial
+     * @return mixed
+     */
+    public function reduceWithKeys(callable $callback, $initial = null)
+    {
+        return $this->reduce($callback, $initial);
     }
 
     /**
@@ -688,6 +727,19 @@ trait EnumeratesValues
                 ? ! $callback($value, $key)
                 : $value != $callback;
         });
+    }
+
+    /**
+     * Pass the collection to the given callback and then return it.
+     *
+     * @param  callable  $callback
+     * @return $this
+     */
+    public function tap(callable $callback)
+    {
+        $callback($this);
+
+        return $this;
     }
 
     /**
@@ -724,21 +776,6 @@ trait EnumeratesValues
     }
 
     /**
-     * Take items in the collection until the given condition is met.
-     *
-     * This is an alias to the "takeUntil" method.
-     *
-     * @param  mixed  $value
-     * @return static
-     *
-     * @deprecated Use the "takeUntil" method directly.
-     */
-    public function until($value)
-    {
-        return $this->takeUntil($value);
-    }
-
-    /**
      * Collect the values into a collection.
      *
      * @return \Illuminate\Support\Collection
@@ -765,6 +802,7 @@ trait EnumeratesValues
      *
      * @return array
      */
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return array_map(function ($value) {

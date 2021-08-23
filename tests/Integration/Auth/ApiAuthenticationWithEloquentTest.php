@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Orchestra\Testbench\TestCase;
 
+/**
+ * @requires extension pdo_mysql
+ */
 class ApiAuthenticationWithEloquentTest extends TestCase
 {
     protected function getEnvironmentSetUp($app)
@@ -17,6 +20,12 @@ class ApiAuthenticationWithEloquentTest extends TestCase
         // Auth configuration
         $app['config']->set('auth.defaults.guard', 'api');
         $app['config']->set('auth.providers.users.model', User::class);
+
+        $app['config']->set('auth.guards.api', [
+            'driver' => 'token',
+            'provider' => 'users',
+            'hash' => false,
+        ]);
 
         // Database configuration
         $app['config']->set('database.default', 'testbench');

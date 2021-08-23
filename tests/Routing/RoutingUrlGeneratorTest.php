@@ -3,6 +3,7 @@
 namespace Illuminate\Tests\Routing;
 
 use Illuminate\Contracts\Routing\UrlRoutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Routing\Route;
@@ -508,7 +509,7 @@ class RoutingUrlGeneratorTest extends TestCase
 
     public function testRoutesWithDomainsThroughProxy()
     {
-        Request::setTrustedProxies(['10.0.0.1'], SymfonyRequest::HEADER_X_FORWARDED_ALL);
+        Request::setTrustedProxies(['10.0.0.1'], SymfonyRequest::HEADER_X_FORWARDED_FOR | SymfonyRequest::HEADER_X_FORWARDED_HOST | SymfonyRequest::HEADER_X_FORWARDED_PORT | SymfonyRequest::HEADER_X_FORWARDED_PROTO);
 
         $url = new UrlGenerator(
             $routes = new RouteCollection,
@@ -548,6 +549,61 @@ class RoutingUrlGeneratorTest extends TestCase
         $routes->add($route);
 
         $this->assertSame('http://www.foo.com:8080/foo?test=123', $url->route('foo', $parameters));
+    }
+
+    public function provideParametersAndExpectedMeaningfulExceptionMessages()
+    {
+        return [
+            'Missing parameters "one", "two" and "three"' => [
+                [],
+                'Missing required parameters for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameters: one, two, three].',
+            ],
+            'Missing parameters "two" and "three"' => [
+                ['one' => '123'],
+                'Missing required parameters for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameters: two, three].',
+            ],
+            'Missing parameters "one" and "three"' => [
+                ['two' => '123'],
+                'Missing required parameters for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameters: one, three].',
+            ],
+            'Missing parameters "one" and "two"' => [
+                ['three' => '123'],
+                'Missing required parameters for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameters: one, two].',
+            ],
+            'Missing parameter "three"' => [
+                ['one' => '123', 'two' => '123'],
+                'Missing required parameter for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameter: three].',
+            ],
+            'Missing parameter "two"' => [
+                ['one' => '123', 'three' => '123'],
+                'Missing required parameter for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameter: two].',
+            ],
+            'Missing parameter "one"' => [
+                ['two' => '123', 'three' => '123'],
+                'Missing required parameter for [Route: foo] [URI: foo/{one}/{two}/{three}/{four?}] [Missing parameter: one].',
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider provideParametersAndExpectedMeaningfulExceptionMessages
+     */
+    public function testUrlGenerationThrowsExceptionForMissingParametersWithMeaningfulMessage($parameters, $expectedMeaningfulExceptionMessage)
+    {
+        $this->expectException(UrlGenerationException::class);
+        $this->expectExceptionMessage($expectedMeaningfulExceptionMessage);
+
+        $url = new UrlGenerator(
+            $routes = new RouteCollection,
+            Request::create('http://www.foo.com:8080/')
+        );
+
+        $route = new Route(['GET'], 'foo/{one}/{two}/{three}/{four?}', ['as' => 'foo', function () {
+            //
+        }]);
+        $routes->add($route);
+
+        $url->route('foo', $parameters);
     }
 
     public function testForceRootUrl()
@@ -635,6 +691,28 @@ class RoutingUrlGeneratorTest extends TestCase
         $this->assertFalse($url->hasValidSignature($request));
     }
 
+    public function testSignedUrlImplicitModelBinding()
+    {
+        $url = new UrlGenerator(
+            $routes = new RouteCollection,
+            $request = Request::create('http://www.foo.com/')
+        );
+        $url->setKeyResolver(function () {
+            return 'secret';
+        });
+
+        $route = new Route(['GET'], 'foo/{user:uuid}', ['as' => 'foo', function () {
+            //
+        }]);
+        $routes->add($route);
+
+        $user = new RoutingUrlGeneratorTestUser(['uuid' => '0231d4ac-e9e3-4452-a89a-4427cfb23c3e']);
+
+        $request = Request::create($url->signedRoute('foo', $user));
+
+        $this->assertTrue($url->hasValidSignature($request));
+    }
+
     public function testSignedRelativeUrl()
     {
         $url = new UrlGenerator(
@@ -681,6 +759,27 @@ class RoutingUrlGeneratorTest extends TestCase
 
         Request::create($url->signedRoute('foo', ['signature' => 'bar']));
     }
+
+    public function testSignedUrlParameterCannotBeNamedExpires()
+    {
+        $url = new UrlGenerator(
+            $routes = new RouteCollection,
+            $request = Request::create('http://www.foo.com/')
+        );
+        $url->setKeyResolver(function () {
+            return 'secret';
+        });
+
+        $route = new Route(['GET'], 'foo/{expires}', ['as' => 'foo', function () {
+            //
+        }]);
+        $routes->add($route);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('reserved');
+
+        Request::create($url->signedRoute('foo', ['expires' => 253402300799]));
+    }
 }
 
 class RoutableInterfaceStub implements UrlRoutable
@@ -715,4 +814,9 @@ class InvokableActionStub
     {
         return 'hello';
     }
+}
+
+class RoutingUrlGeneratorTestUser extends Model
+{
+    protected $fillable = ['uuid'];
 }

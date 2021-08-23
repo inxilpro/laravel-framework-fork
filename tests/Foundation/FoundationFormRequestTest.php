@@ -106,7 +106,7 @@ class FoundationFormRequestTest extends TestCase
         $this->createRequest([], FoundationTestFormRequestHooks::class)->validateResolved();
     }
 
-    public function test_after_validation_runs_after_validation()
+    public function testAfterValidationRunsAfterValidation()
     {
         $request = $this->createRequest([], FoundationTestFormRequestHooks::class);
 
@@ -115,19 +115,39 @@ class FoundationFormRequestTest extends TestCase
         $this->assertEquals(['name' => 'Adam'], $request->all());
     }
 
+    public function testValidatedMethodReturnsOnlyRequestedValidatedData()
+    {
+        $request = $this->createRequest(['name' => 'specified', 'with' => 'extras']);
+
+        $request->validateResolved();
+
+        $this->assertEquals('specified', $request->validated('name'));
+    }
+
+    public function testValidatedMethodReturnsOnlyRequestedNestedValidatedData()
+    {
+        $payload = ['nested' => ['foo' => 'bar', 'baz' => ''], 'array' => [1, 2]];
+
+        $request = $this->createRequest($payload, FoundationTestFormRequestNestedStub::class);
+
+        $request->validateResolved();
+
+        $this->assertEquals('bar', $request->validated('nested.foo'));
+    }
+
     /**
      * Catch the given exception thrown from the executor, and return it.
      *
      * @param  string  $class
-     * @param  \Closure  $excecutor
+     * @param  \Closure  $executor
      * @return \Exception
      *
      * @throws \Exception
      */
-    protected function catchException($class, $excecutor)
+    protected function catchException($class, $executor)
     {
         try {
-            $excecutor();
+            $executor();
         } catch (Exception $e) {
             if (is_a($e, $class)) {
                 return $e;

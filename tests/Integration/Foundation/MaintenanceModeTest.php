@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Cookie;
  */
 class MaintenanceModeTest extends TestCase
 {
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         @unlink(storage_path('framework/down'));
     }
@@ -23,6 +23,7 @@ class MaintenanceModeTest extends TestCase
     {
         file_put_contents(storage_path('framework/down'), json_encode([
             'retry' => 60,
+            'refresh' => 60,
         ]));
 
         Route::get('/foo', function () {
@@ -33,6 +34,7 @@ class MaintenanceModeTest extends TestCase
 
         $response->assertStatus(503);
         $response->assertHeader('Retry-After', '60');
+        $response->assertHeader('Refresh', '60');
     }
 
     public function testMaintenanceModeCanHaveCustomStatus()
@@ -67,7 +69,7 @@ class MaintenanceModeTest extends TestCase
 
         $response->assertStatus(503);
         $response->assertHeader('Retry-After', '60');
-        $this->assertEquals('Rendered Content', $response->original);
+        $this->assertSame('Rendered Content', $response->original);
     }
 
     public function testMaintenanceModeCanRedirectWithBypassCookie()
@@ -106,7 +108,7 @@ class MaintenanceModeTest extends TestCase
         ])->get('/test');
 
         $response->assertStatus(200);
-        $this->assertEquals('Hello World', $response->original);
+        $this->assertSame('Hello World', $response->original);
     }
 
     public function testMaintenanceModeCantBeBypassedWithInvalidCookie()
@@ -134,7 +136,7 @@ class MaintenanceModeTest extends TestCase
         $cookie = MaintenanceModeBypassCookie::create('test-key');
 
         $this->assertInstanceOf(Cookie::class, $cookie);
-        $this->assertEquals('laravel_maintenance', $cookie->getName());
+        $this->assertSame('laravel_maintenance', $cookie->getName());
 
         $this->assertTrue(MaintenanceModeBypassCookie::isValid($cookie->getValue(), 'test-key'));
         $this->assertFalse(MaintenanceModeBypassCookie::isValid($cookie->getValue(), 'wrong-key'));

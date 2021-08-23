@@ -2,8 +2,12 @@
 
 namespace Illuminate\Tests\Database;
 
+use Illuminate\Database\Connection;
+use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Query\Grammars\Grammar;
+use Illuminate\Database\Query\Processors\Processor;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -19,6 +23,10 @@ class DatabaseEloquentPivotTest extends TestCase
     {
         $parent = m::mock(Model::class.'[getConnectionName]');
         $parent->shouldReceive('getConnectionName')->twice()->andReturn('connection');
+        $parent->setConnectionResolver($resolver = m::mock(ConnectionResolverInterface::class));
+        $resolver->shouldReceive('connection')->andReturn($connection = m::mock(Connection::class));
+        $connection->shouldReceive('getQueryGrammar')->andReturn($grammar = m::mock(Grammar::class));
+        $connection->shouldReceive('getPostProcessor')->andReturn($processor = m::mock(Processor::class));
         $parent->getConnection()->getQueryGrammar()->shouldReceive('getDateFormat')->andReturn('Y-m-d H:i:s');
         $parent->setDateFormat('Y-m-d H:i:s');
         $pivot = Pivot::fromAttributes($parent, ['foo' => 'bar', 'created_at' => '2015-09-12'], 'table', true);
@@ -111,7 +119,7 @@ class DatabaseEloquentPivotTest extends TestCase
 
     public function testDeleteMethodDeletesModelByKeys()
     {
-        $pivot = $this->getMockBuilder(Pivot::class)->setMethods(['newQueryWithoutRelationships'])->getMock();
+        $pivot = $this->getMockBuilder(Pivot::class)->onlyMethods(['newQueryWithoutRelationships'])->getMock();
         $pivot->setPivotKeys('foreign', 'other');
         $pivot->foreign = 'foreign.value';
         $pivot->other = 'other.value';
@@ -156,18 +164,18 @@ class DatabaseEloquentPivotTest extends TestCase
 
     public function testWithoutRelations()
     {
-        $original = new Pivot();
+        $original = new Pivot;
 
         $original->pivotParent = 'foo';
         $original->setRelation('bar', 'baz');
 
-        $this->assertEquals('baz', $original->getRelation('bar'));
+        $this->assertSame('baz', $original->getRelation('bar'));
 
         $pivot = $original->withoutRelations();
 
         $this->assertInstanceOf(Pivot::class, $pivot);
         $this->assertNotSame($pivot, $original);
-        $this->assertEquals('foo', $original->pivotParent);
+        $this->assertSame('foo', $original->pivotParent);
         $this->assertNull($pivot->pivotParent);
         $this->assertTrue($original->relationLoaded('bar'));
         $this->assertFalse($pivot->relationLoaded('bar'));

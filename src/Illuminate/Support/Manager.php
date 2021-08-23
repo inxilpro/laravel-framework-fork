@@ -44,7 +44,6 @@ abstract class Manager
      */
     public function __construct(Container $container)
     {
-        $this->app = $container;
         $this->container = $container;
         $this->config = $container->make('config');
     }
@@ -143,6 +142,41 @@ abstract class Manager
     public function getDrivers()
     {
         return $this->drivers;
+    }
+
+    /**
+     * Get the container instance used by the manager.
+     *
+     * @return \Illuminate\Contracts\Container\Container
+     */
+    public function getContainer()
+    {
+        return $this->container;
+    }
+
+    /**
+     * Set the container instance used by the manager.
+     *
+     * @param  \Illuminate\Contracts\Container\Container  $container
+     * @return $this
+     */
+    public function setContainer(Container $container)
+    {
+        $this->container = $container;
+
+        return $this;
+    }
+
+    /**
+     * Forget all of the resolved driver instances.
+     *
+     * @return $this
+     */
+    public function forgetDrivers()
+    {
+        $this->drivers = [];
+
+        return $this;
     }
 
     /**

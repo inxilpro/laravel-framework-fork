@@ -28,6 +28,15 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public static function times($number, callable $callback = null);
 
     /**
+     * Create a collection with the given range.
+     *
+     * @param  int  $from
+     * @param  int  $to
+     * @return static
+     */
+    public static function range($from, $to);
+
+    /**
      * Wrap the given value in a collection if applicable.
      *
      * @param  mixed  $value
@@ -42,6 +51,13 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
      * @return array
      */
     public static function unwrap($value);
+
+    /**
+     * Create a new instance with no items.
+     *
+     * @return static
+     */
+    public static function empty();
 
     /**
      * Get all items in the enumerable.
@@ -119,6 +135,14 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function contains($key, $operator = null, $value = null);
 
     /**
+     * Cross join with the given lists, returning all possible permutations.
+     *
+     * @param  mixed  ...$lists
+     * @return static
+     */
+    public function crossJoin(...$lists);
+
+    /**
      * Dump the collection and end the script.
      *
      * @param  mixed  ...$args
@@ -187,7 +211,7 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     /**
      * Retrieve duplicate items.
      *
-     * @param  callable|null  $callback
+     * @param  callable|string|null  $callback
      * @param  bool  $strict
      * @return static
      */
@@ -196,7 +220,7 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     /**
      * Retrieve duplicate items using strict comparison.
      *
-     * @param  callable|null  $callback
+     * @param  callable|string|null  $callback
      * @return static
      */
     public function duplicatesStrict($callback = null);
@@ -244,14 +268,14 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function filter(callable $callback = null);
 
     /**
-     * Apply the callback if the value is truthy.
+     * Apply the callback if the given "value" is (or resolves to) truthy.
      *
      * @param  bool  $value
-     * @param  callable  $callback
+     * @param  callable|null  $callback
      * @param  callable|null  $default
      * @return static|mixed
      */
-    public function when($value, callable $callback, callable $default = null);
+    public function when($value, callable $callback = null, callable $default = null);
 
     /**
      * Apply the callback if the collection is empty.
@@ -272,7 +296,7 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function whenNotEmpty(callable $callback, callable $default = null);
 
     /**
-     * Apply the callback if the value is falsy.
+     * Apply the callback if the given "value" is (or resolves to) truthy.
      *
      * @param  bool  $value
      * @param  callable  $callback
@@ -308,6 +332,22 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
      * @return static
      */
     public function where($key, $operator = null, $value = null);
+
+    /**
+     * Filter items where the value for the given key is null.
+     *
+     * @param  string|null  $key
+     * @return static
+     */
+    public function whereNull($key = null);
+
+    /**
+     * Filter items where the value for the given key is not null.
+     *
+     * @param  string|null  $key
+     * @return static
+     */
+    public function whereNotNull($key = null);
 
     /**
      * Filter items by the given key value pair using strict comparison.
@@ -375,9 +415,9 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function whereNotInStrict($key, $values);
 
     /**
-     * Filter the items, removing any items that don't match the given type.
+     * Filter the items, removing any items that don't match the given type(s).
      *
-     * @param  string  $type
+     * @param  string|string[]  $type
      * @return static
      */
     public function whereInstanceOf($type);
@@ -400,6 +440,14 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
      * @return mixed
      */
     public function firstWhere($key, $operator = null, $value = null);
+
+    /**
+     * Get a flattened array of the items in the collection.
+     *
+     * @param  int  $depth
+     * @return static
+     */
+    public function flatten($depth = INF);
 
     /**
      * Flip the values with their keys.
@@ -728,6 +776,22 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function skip($count);
 
     /**
+     * Skip items in the collection until the given condition is met.
+     *
+     * @param  mixed  $value
+     * @return static
+     */
+    public function skipUntil($value);
+
+    /**
+     * Skip items in the collection while the given condition is met.
+     *
+     * @param  mixed  $value
+     * @return static
+     */
+    public function skipWhile($value);
+
+    /**
      * Get a slice of items from the enumerable.
      *
      * @param  int  $offset
@@ -743,6 +807,19 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
      * @return static
      */
     public function split($numberOfGroups);
+
+    /**
+     * Get the first item in the collection, but only if exactly one item exists. Otherwise, throw an exception.
+     *
+     * @param  mixed  $key
+     * @param  mixed  $operator
+     * @param  mixed  $value
+     * @return mixed
+     *
+     * @throws \Illuminate\Collections\ItemNotFoundException
+     * @throws \Illuminate\Collections\MultipleItemsFoundException
+     */
+    public function sole($key = null, $operator = null, $value = null);
 
     /**
      * Chunk the collection into chunks of the given size.
@@ -829,6 +906,22 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
     public function take($limit);
 
     /**
+     * Take items in the collection until the given condition is met.
+     *
+     * @param  mixed  $value
+     * @return static
+     */
+    public function takeUntil($value);
+
+    /**
+     * Take items in the collection while the given condition is met.
+     *
+     * @param  mixed  $value
+     * @return static
+     */
+    public function takeWhile($value);
+
+    /**
      * Pass the collection to the given callback and then return it.
      *
      * @param  callable  $callback
@@ -901,6 +994,17 @@ interface Enumerable extends Arrayable, Countable, IteratorAggregate, Jsonable, 
      * @return static
      */
     public function countBy($callback = null);
+
+    /**
+     * Zip the collection together with one or more arrays.
+     *
+     * e.g. new Collection([1, 2, 3])->zip([4, 5, 6]);
+     *      => [[1, 4], [2, 5], [3, 6]]
+     *
+     * @param  mixed  ...$items
+     * @return static
+     */
+    public function zip($items);
 
     /**
      * Collect the values into a collection.

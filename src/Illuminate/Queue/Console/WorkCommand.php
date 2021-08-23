@@ -33,8 +33,18 @@ class WorkCommand extends Command
                             {--force : Force the worker to run even in maintenance mode}
                             {--memory=128 : The memory limit in megabytes}
                             {--sleep=3 : Number of seconds to sleep when no job is available}
+                            {--rest=0 : Number of seconds to rest between jobs}
                             {--timeout=60 : The number of seconds a child process can run}
                             {--tries=1 : Number of times to attempt a job before logging it failed}';
+
+    /**
+     * The name of the console command.
+     *
+     * This name is used to identify the command during lazy loading.
+     *
+     * @var string|null
+     */
+    protected static $defaultName = 'queue:work';
 
     /**
      * The console command description.
@@ -124,13 +134,9 @@ class WorkCommand extends Command
      */
     protected function gatherWorkerOptions()
     {
-        $backoff = $this->hasOption('backoff')
-                    ? $this->option('backoff')
-                    : $this->option('delay');
-
         return new WorkerOptions(
             $this->option('name'),
-            $backoff,
+            max($this->option('backoff'), $this->option('delay')),
             $this->option('memory'),
             $this->option('timeout'),
             $this->option('sleep'),
@@ -138,7 +144,8 @@ class WorkCommand extends Command
             $this->option('force'),
             $this->option('stop-when-empty'),
             $this->option('max-jobs'),
-            $this->option('max-time')
+            $this->option('max-time'),
+            $this->option('rest')
         );
     }
 

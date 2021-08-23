@@ -8,10 +8,15 @@ use Illuminate\Bus\Batchable;
 use Illuminate\Bus\BatchFactory;
 use Illuminate\Bus\DatabaseBatchRepository;
 use Illuminate\Bus\PendingBatch;
+use Illuminate\Bus\Queueable;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Queue\Factory;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\PostgresConnection;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\CallQueuedClosure;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -65,10 +70,7 @@ class BusBatchTest extends TestCase
      */
     protected function tearDown(): void
     {
-        unset($_SERVER['__finally.batch']);
-        unset($_SERVER['__then.batch']);
-        unset($_SERVER['__catch.batch']);
-        unset($_SERVER['__catch.exception']);
+        unset($_SERVER['__finally.batch'], $_SERVER['__then.batch'], $_SERVER['__catch.batch'], $_SERVER['__catch.exception']);
 
         $this->schema()->drop('job_batches');
 
@@ -81,25 +83,36 @@ class BusBatchTest extends TestCase
 
         $batch = $this->createTestBatch($queue);
 
-        $job = new class {
+        $job = new class
+        {
             use Batchable;
         };
 
-        $secondJob = new class {
+        $secondJob = new class
+        {
             use Batchable;
+        };
+
+        $thirdJob = function () {
         };
 
         $queue->shouldReceive('connection')->once()
                         ->with('test-connection')
                         ->andReturn($connection = m::mock(stdClass::class));
 
-        $connection->shouldReceive('bulk')->once()->with([$job, $secondJob], '', 'test-queue');
+        $connection->shouldReceive('bulk')->once()->with(\Mockery::on(function ($args) use ($job, $secondJob) {
+            return
+                $args[0] == $job &&
+                $args[1] == $secondJob &&
+                $args[2] instanceof CallQueuedClosure
+                && is_string($args[2]->batchId);
+        }), '', 'test-queue');
 
-        $batch = $batch->add([$job, $secondJob]);
+        $batch = $batch->add([$job, $secondJob, $thirdJob]);
 
-        $this->assertEquals(2, $batch->totalJobs);
-        $this->assertEquals(2, $batch->pendingJobs);
-        $this->assertTrue(is_string($job->batchId));
+        $this->assertEquals(3, $batch->totalJobs);
+        $this->assertEquals(3, $batch->pendingJobs);
+        $this->assertIsString($job->batchId);
         $this->assertInstanceOf(CarbonImmutable::class, $batch->createdAt);
     }
 
@@ -122,11 +135,13 @@ class BusBatchTest extends TestCase
 
         $batch = $this->createTestBatch($queue);
 
-        $job = new class {
+        $job = new class
+        {
             use Batchable;
         };
 
-        $secondJob = new class {
+        $secondJob = new class
+        {
             use Batchable;
         };
 
@@ -158,11 +173,13 @@ class BusBatchTest extends TestCase
 
         $batch = $this->createTestBatch($queue, $allowFailures = false);
 
-        $job = new class {
+        $job = new class
+        {
             use Batchable;
         };
 
-        $secondJob = new class {
+        $secondJob = new class
+        {
             use Batchable;
         };
 
@@ -188,7 +205,7 @@ class BusBatchTest extends TestCase
         $this->assertTrue($batch->cancelled());
         $this->assertEquals(1, $_SERVER['__finally.count']);
         $this->assertEquals(1, $_SERVER['__catch.count']);
-        $this->assertEquals('Something went wrong.', $_SERVER['__catch.exception']->getMessage());
+        $this->assertSame('Something went wrong.', $_SERVER['__catch.exception']->getMessage());
     }
 
     public function test_failed_jobs_can_be_recorded_while_allowing_failures()
@@ -197,11 +214,13 @@ class BusBatchTest extends TestCase
 
         $batch = $this->createTestBatch($queue, $allowFailures = true);
 
-        $job = new class {
+        $job = new class
+        {
             use Batchable;
         };
 
-        $secondJob = new class {
+        $secondJob = new class
+        {
             use Batchable;
         };
 
@@ -226,7 +245,7 @@ class BusBatchTest extends TestCase
         $this->assertFalse($batch->finished());
         $this->assertFalse($batch->cancelled());
         $this->assertEquals(1, $_SERVER['__catch.count']);
-        $this->assertEquals('Something went wrong.', $_SERVER['__catch.exception']->getMessage());
+        $this->assertSame('Something went wrong.', $_SERVER['__catch.exception']->getMessage());
     }
 
     public function test_batch_can_be_cancelled()
@@ -287,7 +306,109 @@ class BusBatchTest extends TestCase
         $batch->cancelledAt = now();
         $this->assertTrue($batch->cancelled());
 
-        $this->assertTrue(is_string(json_encode($batch)));
+        $this->assertIsString(json_encode($batch));
+    }
+
+    public function test_chain_can_be_added_to_batch()
+    {
+        $queue = m::mock(Factory::class);
+
+        $batch = $this->createTestBatch($queue);
+
+        $chainHeadJob = new ChainHeadJob;
+
+        $secondJob = new SecondTestJob;
+
+        $thirdJob = new ThirdTestJob;
+
+        $queue->shouldReceive('connection')->once()
+            ->with('test-connection')
+            ->andReturn($connection = m::mock(stdClass::class));
+
+        $connection->shouldReceive('bulk')->once()->with(\Mockery::on(function ($args) use ($chainHeadJob, $secondJob, $thirdJob) {
+            return
+                $args[0] == $chainHeadJob
+                && serialize($secondJob) == $args[0]->chained[0]
+                && serialize($thirdJob) == $args[0]->chained[1];
+        }), '', 'test-queue');
+
+        $batch = $batch->add([
+            [$chainHeadJob, $secondJob, $thirdJob],
+        ]);
+
+        $this->assertEquals(3, $batch->totalJobs);
+        $this->assertEquals(3, $batch->pendingJobs);
+        $this->assertSame('test-queue', $chainHeadJob->chainQueue);
+        $this->assertIsString($chainHeadJob->batchId);
+        $this->assertIsString($secondJob->batchId);
+        $this->assertIsString($thirdJob->batchId);
+        $this->assertInstanceOf(CarbonImmutable::class, $batch->createdAt);
+    }
+
+    public function test_options_serialization_on_postgres()
+    {
+        $pendingBatch = (new PendingBatch(new Container, collect()))
+            ->onQueue('test-queue');
+
+        $connection = m::spy(PostgresConnection::class);
+
+        $connection->shouldReceive('table')->andReturnSelf()
+            ->shouldReceive('where')->andReturnSelf();
+
+        $repository = new DatabaseBatchRepository(
+            new BatchFactory(m::mock(Factory::class)), $connection, 'job_batches'
+        );
+
+        $repository->store($pendingBatch);
+
+        $connection->shouldHaveReceived('insert')
+            ->withArgs(function ($argument) use ($pendingBatch) {
+                return unserialize(base64_decode($argument['options'])) === $pendingBatch->options;
+            });
+    }
+
+    /**
+     * @dataProvider serializedOptions
+     */
+    public function test_options_unserialize_on_postgres($serialize, $options)
+    {
+        $factory = m::mock(BatchFactory::class);
+
+        $connection = m::spy(PostgresConnection::class);
+
+        $connection->shouldReceive('table->where->first')
+            ->andReturn($m = (object) [
+                'id' => '',
+                'name' => '',
+                'total_jobs' => '',
+                'pending_jobs' => '',
+                'failed_jobs' => '',
+                'failed_job_ids' => '[]',
+                'options' => $serialize,
+                'created_at' => now()->timestamp,
+                'cancelled_at' => null,
+                'finished_at' => null,
+            ]);
+
+        $batch = (new DatabaseBatchRepository($factory, $connection, 'job_batches'));
+
+        $factory->shouldReceive('make')
+            ->withSomeOfArgs($batch, '', '', '', '', '', '', $options);
+
+        $batch->find(1);
+    }
+
+    /**
+     * @return array
+     */
+    public function serializedOptions()
+    {
+        $options = [1, 2];
+
+        return [
+            [serialize($options), $options],
+            [base64_encode(serialize($options)), $options],
+        ];
     }
 
     protected function createTestBatch($queue, $allowFailures = false)
@@ -334,4 +455,19 @@ class BusBatchTest extends TestCase
     {
         return $this->connection()->getSchemaBuilder();
     }
+}
+
+class ChainHeadJob implements ShouldQueue
+{
+    use Dispatchable, Queueable, Batchable;
+}
+
+class SecondTestJob implements ShouldQueue
+{
+    use Dispatchable, Queueable, Batchable;
+}
+
+class ThirdTestJob implements ShouldQueue
+{
+    use Dispatchable, Queueable, Batchable;
 }

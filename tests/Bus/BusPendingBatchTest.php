@@ -30,9 +30,12 @@ class BusPendingBatchTest extends TestCase
 
         $container->instance(Dispatcher::class, $eventDispatcher);
 
-        $pendingBatch = new PendingBatch($container, new Collection([$job = new class {
+        $job = new class
+        {
             use Batchable;
-        }]));
+        };
+
+        $pendingBatch = new PendingBatch($container, new Collection([$job]));
 
         $pendingBatch = $pendingBatch->then(function () {
             //
@@ -40,8 +43,8 @@ class BusPendingBatchTest extends TestCase
             //
         })->allowFailures()->onConnection('test-connection')->onQueue('test-queue');
 
-        $this->assertEquals('test-connection', $pendingBatch->connection());
-        $this->assertEquals('test-queue', $pendingBatch->queue());
+        $this->assertSame('test-connection', $pendingBatch->connection());
+        $this->assertSame('test-queue', $pendingBatch->queue());
         $this->assertCount(1, $pendingBatch->thenCallbacks());
         $this->assertCount(1, $pendingBatch->catchCallbacks());
 
@@ -60,8 +63,11 @@ class BusPendingBatchTest extends TestCase
 
         $container = new Container;
 
-        $pendingBatch = new PendingBatch($container, new Collection([new class {
-        }]));
+        $job = new class
+        {
+        };
+
+        $pendingBatch = new PendingBatch($container, new Collection([$job]));
 
         $repository = m::mock(BatchRepository::class);
 

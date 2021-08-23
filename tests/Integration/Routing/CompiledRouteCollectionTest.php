@@ -39,8 +39,7 @@ class CompiledRouteCollectionTest extends TestCase
     {
         parent::tearDown();
 
-        unset($this->routeCollection);
-        unset($this->router);
+        unset($this->routeCollection, $this->router);
     }
 
     /**
@@ -488,6 +487,59 @@ class CompiledRouteCollectionTest extends TestCase
         $request->getPathInfo();
 
         $this->assertSame('foo', $this->collection()->match($request)->getName());
+    }
+
+    public function testRouteWithSamePathAndSameMethodButDiffDomainNameWithOptionsMethod()
+    {
+        $routes = [
+            'foo_domain' => $this->newRoute('GET', 'same/path', [
+                'uses' => 'FooController@index',
+                'as' => 'foo',
+                'domain' => 'foo.localhost',
+            ]),
+            'bar_domain' => $this->newRoute('GET', 'same/path', [
+                'uses' => 'BarController@index',
+                'as' => 'bar',
+                'domain' => 'bar.localhost',
+            ]),
+            'no_domain' => $this->newRoute('GET', 'same/path', [
+                'uses' => 'BarController@index',
+                'as' => 'no_domain',
+            ]),
+        ];
+
+        $this->routeCollection->add($routes['foo_domain']);
+        $this->routeCollection->add($routes['bar_domain']);
+        $this->routeCollection->add($routes['no_domain']);
+
+        $expectedMethods = [
+            'OPTIONS',
+        ];
+
+        $this->assertSame($expectedMethods, $this->collection()->match(
+            Request::create('http://foo.localhost/same/path', 'OPTIONS')
+        )->methods);
+
+        $this->assertSame($expectedMethods, $this->collection()->match(
+            Request::create('http://bar.localhost/same/path', 'OPTIONS')
+        )->methods);
+
+        $this->assertSame($expectedMethods, $this->collection()->match(
+            Request::create('http://no.localhost/same/path', 'OPTIONS')
+        )->methods);
+
+        $this->assertEquals([
+            'HEAD' => [
+                'foo.localhost/same/path' => $routes['foo_domain'],
+                'bar.localhost/same/path' => $routes['bar_domain'],
+                'same/path' => $routes['no_domain'],
+            ],
+            'GET' => [
+                'foo.localhost/same/path' => $routes['foo_domain'],
+                'bar.localhost/same/path' => $routes['bar_domain'],
+                'same/path' => $routes['no_domain'],
+            ],
+        ], $this->collection()->getRoutesByMethod());
     }
 
     /**

@@ -4,8 +4,7 @@ namespace Illuminate\Tests\Filesystem;
 
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Filesystem\FilesystemManager;
-use Illuminate\Foundation\Application;
+use Illuminate\Support\LazyCollection;
 use Illuminate\Testing\Assert;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
@@ -56,6 +55,27 @@ class FilesystemTest extends TestCase
         $this->assertStringEqualsFile(self::$tempDir.'/file.txt', 'Hello World');
     }
 
+    public function testLines()
+    {
+        $path = self::$tempDir.'/file.txt';
+
+        $contents = LazyCollection::times(3)
+            ->map(function ($number) {
+                return "line-{$number}";
+            })
+            ->join("\n");
+
+        file_put_contents($path, $contents);
+
+        $files = new Filesystem;
+        $this->assertInstanceOf(LazyCollection::class, $files->lines($path));
+
+        $this->assertSame(
+            ['line-1', 'line-2', 'line-3'],
+            $files->lines($path)->all()
+        );
+    }
+
     public function testReplaceCreatesFile()
     {
         $tempFile = self::$tempDir.'/file.txt';
@@ -64,6 +84,17 @@ class FilesystemTest extends TestCase
 
         $filesystem->replace($tempFile, 'Hello World');
         $this->assertStringEqualsFile($tempFile, 'Hello World');
+    }
+
+    public function testReplaceInFileCorrectlyReplaces()
+    {
+        $tempFile = self::$tempDir.'/file.txt';
+
+        $filesystem = new Filesystem;
+
+        $filesystem->put($tempFile, 'Hello World');
+        $filesystem->replaceInFile('Hello World', 'Hello Taylor', $tempFile);
+        $this->assertStringEqualsFile($tempFile, 'Hello Taylor');
     }
 
     public function testReplaceWhenUnixSymlinkExists()
@@ -115,7 +146,7 @@ class FilesystemTest extends TestCase
         $files = new Filesystem;
         $files->chmod(self::$tempDir.'/file.txt', 0755);
         $filePermission = substr(sprintf('%o', fileperms(self::$tempDir.'/file.txt')), -4);
-        $expectedPermissions = DIRECTORY_SEPARATOR == '\\' ? '0666' : '0755';
+        $expectedPermissions = DIRECTORY_SEPARATOR === '\\' ? '0666' : '0755';
         $this->assertEquals($expectedPermissions, $filePermission);
     }
 
@@ -126,7 +157,7 @@ class FilesystemTest extends TestCase
 
         $files = new Filesystem;
         $filePermission = $files->chmod(self::$tempDir.'/file.txt');
-        $expectedPermissions = DIRECTORY_SEPARATOR == '\\' ? '0666' : '0755';
+        $expectedPermissions = DIRECTORY_SEPARATOR === '\\' ? '0666' : '0755';
         $this->assertEquals($expectedPermissions, $filePermission);
     }
 
@@ -466,7 +497,7 @@ class FilesystemTest extends TestCase
      */
     public function testSharedGet()
     {
-        if (PHP_OS == 'Darwin') {
+        if (PHP_OS === 'Darwin') {
             $this->markTestSkipped('The operating system is MacOS.');
         }
 
@@ -544,27 +575,6 @@ class FilesystemTest extends TestCase
         file_put_contents(self::$tempDir.'/bar.txt', 'bar');
         $files = new Filesystem;
         $this->assertContainsOnlyInstancesOf(SplFileInfo::class, $files->allFiles(self::$tempDir));
-    }
-
-    /**
-     * @requires extension ftp
-     */
-    public function testCreateFtpDriver()
-    {
-        $filesystem = new FilesystemManager(new Application);
-
-        $driver = $filesystem->createFtpDriver([
-            'host' => 'ftp.example.com',
-            'username' => 'admin',
-            'permPublic' => 0700,
-            'unsupportedParam' => true,
-        ]);
-
-        /** @var \League\Flysystem\Adapter\Ftp $adapter */
-        $adapter = $driver->getAdapter();
-        $this->assertEquals(0700, $adapter->getPermPublic());
-        $this->assertSame('ftp.example.com', $adapter->getHost());
-        $this->assertSame('admin', $adapter->getUsername());
     }
 
     public function testHash()

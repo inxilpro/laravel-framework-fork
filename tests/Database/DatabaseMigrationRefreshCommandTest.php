@@ -2,10 +2,12 @@
 
 namespace Illuminate\Tests\Database;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Console\Migrations\MigrateCommand;
 use Illuminate\Database\Console\Migrations\RefreshCommand;
 use Illuminate\Database\Console\Migrations\ResetCommand;
 use Illuminate\Database\Console\Migrations\RollbackCommand;
+use Illuminate\Database\Events\DatabaseRefreshed;
 use Illuminate\Foundation\Application;
 use Mockery as m;
 use PHPUnit\Framework\TestCase;
@@ -22,9 +24,10 @@ class DatabaseMigrationRefreshCommandTest extends TestCase
 
     public function testRefreshCommandCallsCommandsWithProperArguments()
     {
-        $command = new RefreshCommand();
+        $command = new RefreshCommand;
 
         $app = new ApplicationDatabaseRefreshStub(['path.database' => __DIR__]);
+        $dispatcher = $app->instance(Dispatcher::class, $events = m::mock());
         $console = m::mock(ConsoleApplication::class)->makePartial();
         $console->__construct();
         $command->setLaravel($app);
@@ -35,8 +38,9 @@ class DatabaseMigrationRefreshCommandTest extends TestCase
 
         $console->shouldReceive('find')->with('migrate:reset')->andReturn($resetCommand);
         $console->shouldReceive('find')->with('migrate')->andReturn($migrateCommand);
+        $dispatcher->shouldReceive('dispatch')->once()->with(m::type(DatabaseRefreshed::class));
 
-        $quote = DIRECTORY_SEPARATOR == '\\' ? '"' : "'";
+        $quote = DIRECTORY_SEPARATOR === '\\' ? '"' : "'";
         $resetCommand->shouldReceive('run')->with(new InputMatcher("--force=1 {$quote}migrate:reset{$quote}"), m::any());
         $migrateCommand->shouldReceive('run')->with(new InputMatcher('--force=1 migrate'), m::any());
 
@@ -45,9 +49,10 @@ class DatabaseMigrationRefreshCommandTest extends TestCase
 
     public function testRefreshCommandCallsCommandsWithStep()
     {
-        $command = new RefreshCommand();
+        $command = new RefreshCommand;
 
         $app = new ApplicationDatabaseRefreshStub(['path.database' => __DIR__]);
+        $dispatcher = $app->instance(Dispatcher::class, $events = m::mock());
         $console = m::mock(ConsoleApplication::class)->makePartial();
         $console->__construct();
         $command->setLaravel($app);
@@ -58,8 +63,9 @@ class DatabaseMigrationRefreshCommandTest extends TestCase
 
         $console->shouldReceive('find')->with('migrate:rollback')->andReturn($rollbackCommand);
         $console->shouldReceive('find')->with('migrate')->andReturn($migrateCommand);
+        $dispatcher->shouldReceive('dispatch')->once()->with(m::type(DatabaseRefreshed::class));
 
-        $quote = DIRECTORY_SEPARATOR == '\\' ? '"' : "'";
+        $quote = DIRECTORY_SEPARATOR === '\\' ? '"' : "'";
         $rollbackCommand->shouldReceive('run')->with(new InputMatcher("--step=2 --force=1 {$quote}migrate:rollback{$quote}"), m::any());
         $migrateCommand->shouldReceive('run')->with(new InputMatcher('--force=1 migrate'), m::any());
 

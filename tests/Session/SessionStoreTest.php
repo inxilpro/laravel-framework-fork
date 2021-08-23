@@ -226,7 +226,7 @@ class SessionStoreTest extends TestCase
     {
         $session = $this->getSession();
         $session->put('boom', 'baz');
-        $session->flashInput(['foo' => 'bar', 'bar' => 0]);
+        $session->flashInput(['foo' => 'bar', 'bar' => 0, 'name' => null]);
 
         $this->assertTrue($session->hasOldInput('foo'));
         $this->assertSame('bar', $session->getOldInput('foo'));
@@ -239,6 +239,9 @@ class SessionStoreTest extends TestCase
         $this->assertSame('bar', $session->getOldInput('foo'));
         $this->assertEquals(0, $session->getOldInput('bar'));
         $this->assertFalse($session->hasOldInput('boom'));
+
+        $this->assertSame('default', $session->getOldInput('input', 'default'));
+        $this->assertSame(null, $session->getOldInput('name', 'default'));
     }
 
     public function testDataFlashing()
@@ -433,7 +436,7 @@ class SessionStoreTest extends TestCase
         $session = $this->getSession();
         $this->assertEquals($session->getName(), $this->getSessionName());
         $session->setName('foo');
-        $this->assertEquals($session->getName(), 'foo');
+        $this->assertSame('foo', $session->getName());
     }
 
     public function testKeyExists()
@@ -450,6 +453,22 @@ class SessionStoreTest extends TestCase
         $this->assertFalse($session->exists(['foo', 'baz', 'bogus']));
         $this->assertTrue($session->exists(['hulk.one']));
         $this->assertFalse($session->exists(['hulk.two']));
+    }
+
+    public function testKeyMissing()
+    {
+        $session = $this->getSession();
+        $session->put('foo', 'bar');
+        $this->assertFalse($session->missing('foo'));
+        $session->put('baz', null);
+        $session->put('hulk', ['one' => true]);
+        $this->assertFalse($session->has('baz'));
+        $this->assertFalse($session->missing('baz'));
+        $this->assertTrue($session->missing('bogus'));
+        $this->assertFalse($session->missing(['foo', 'baz']));
+        $this->assertTrue($session->missing(['foo', 'baz', 'bogus']));
+        $this->assertFalse($session->missing(['hulk.one']));
+        $this->assertTrue($session->missing(['hulk.two']));
     }
 
     public function testRememberMethodCallsPutAndReturnsDefault()

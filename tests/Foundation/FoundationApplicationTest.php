@@ -45,7 +45,8 @@ class FoundationApplicationTest extends TestCase
     public function testClassesAreBoundWhenServiceProviderIsRegistered()
     {
         $app = new Application;
-        $app->register($provider = new class($app) extends ServiceProvider {
+        $app->register($provider = new class($app) extends ServiceProvider
+        {
             public $bindings = [
                 AbstractClass::class => ConcreteClass::class,
             ];
@@ -62,7 +63,8 @@ class FoundationApplicationTest extends TestCase
     public function testSingletonsAreCreatedWhenServiceProviderIsRegistered()
     {
         $app = new Application;
-        $app->register($provider = new class($app) extends ServiceProvider {
+        $app->register($provider = new class($app) extends ServiceProvider
+        {
             public $singletons = [
                 AbstractClass::class => ConcreteClass::class,
             ];
@@ -145,7 +147,7 @@ class FoundationApplicationTest extends TestCase
         $app->setDeferredServices(['foo' => ApplicationDeferredServiceProviderStub::class]);
         $app->instance('foo', 'bar');
         $instance = $app->make('foo');
-        $this->assertEquals($instance, 'bar');
+        $this->assertSame('bar', $instance);
     }
 
     public function testDeferredServicesAreLazilyInitialized()
@@ -192,7 +194,7 @@ class FoundationApplicationTest extends TestCase
             SampleImplementation::class => SampleImplementationDeferredServiceProvider::class,
         ]);
         $instance = $app->make(SampleInterface::class);
-        $this->assertEquals($instance->getPrimitive(), 'foo');
+        $this->assertSame('foo', $instance->getPrimitive());
     }
 
     public function testEnvironment()
@@ -430,7 +432,7 @@ class FoundationApplicationTest extends TestCase
 
     public function testEnvPathsAreUsedAndMadeAbsoluteForCachePathsWhenSpecifiedAsRelativeWithNullBasePath()
     {
-        $app = new Application();
+        $app = new Application;
         $_SERVER['APP_SERVICES_CACHE'] = 'relative/path/services.php';
         $_SERVER['APP_PACKAGES_CACHE'] = 'relative/path/packages.php';
         $_SERVER['APP_CONFIG_CACHE'] = 'relative/path/config.php';

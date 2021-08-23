@@ -2,6 +2,7 @@
 
 namespace Illuminate\Tests\Integration\Database\EloquentModelLoadCountTest;
 
+use DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Schema\Blueprint;
@@ -49,11 +50,11 @@ class EloquentModelLoadCountTest extends DatabaseTestCase
     {
         $model = BaseModel::first();
 
-        \DB::enableQueryLog();
+        DB::enableQueryLog();
 
         $model->loadCount('related1');
 
-        $this->assertCount(1, \DB::getQueryLog());
+        $this->assertCount(1, DB::getQueryLog());
         $this->assertEquals(2, $model->related1_count);
     }
 
@@ -61,11 +62,11 @@ class EloquentModelLoadCountTest extends DatabaseTestCase
     {
         $model = BaseModel::first();
 
-        \DB::enableQueryLog();
+        DB::enableQueryLog();
 
         $model->loadCount(['related1', 'related2']);
 
-        $this->assertCount(1, \DB::getQueryLog());
+        $this->assertCount(1, DB::getQueryLog());
         $this->assertEquals(2, $model->related1_count);
         $this->assertEquals(1, $model->related2_count);
     }
@@ -74,7 +75,7 @@ class EloquentModelLoadCountTest extends DatabaseTestCase
     {
         $model = BaseModel::first();
 
-        $this->assertEquals(null, $model->deletedrelated_count);
+        $this->assertNull($model->deletedrelated_count);
 
         $model->loadCount('deletedrelated');
 
@@ -84,7 +85,7 @@ class EloquentModelLoadCountTest extends DatabaseTestCase
 
         $model = BaseModel::first();
 
-        $this->assertEquals(null, $model->deletedrelated_count);
+        $this->assertNull($model->deletedrelated_count);
 
         $model->loadCount('deletedrelated');
 

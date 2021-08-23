@@ -58,7 +58,7 @@ if (! function_exists('data_get')) {
             if ($segment === '*') {
                 if ($target instanceof Collection) {
                     $target = $target->all();
-                } elseif (! is_array($target)) {
+                } elseif (! is_iterable($target)) {
                     return value($default);
                 }
 
@@ -179,8 +179,8 @@ if (! function_exists('value')) {
      * @param  mixed  $value
      * @return mixed
      */
-    function value($value)
+    function value($value, ...$args)
     {
-        return $value instanceof Closure ? $value() : $value;
+        return $value instanceof Closure ? $value(...$args) : $value;
     }
 }

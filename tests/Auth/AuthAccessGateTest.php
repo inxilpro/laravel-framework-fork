@@ -184,10 +184,12 @@ class AuthAccessGateTest extends TestCase
         $this->assertTrue($_SERVER['__laravel.gateAfter']);
         $this->assertFalse($_SERVER['__laravel.gateAfter2']);
 
-        unset($_SERVER['__laravel.gateBefore']);
-        unset($_SERVER['__laravel.gateBefore2']);
-        unset($_SERVER['__laravel.gateAfter']);
-        unset($_SERVER['__laravel.gateAfter2']);
+        unset(
+            $_SERVER['__laravel.gateBefore'],
+            $_SERVER['__laravel.gateBefore2'],
+            $_SERVER['__laravel.gateAfter'],
+            $_SERVER['__laravel.gateAfter2']
+        );
     }
 
     public function testResourceGatesCanBeDefined()
@@ -262,9 +264,9 @@ class AuthAccessGateTest extends TestCase
         });
 
         $gate->after(function ($user, $ability, $result) {
-            if ($ability == 'foo') {
+            if ($ability === 'foo') {
                 $this->assertTrue($result, 'After callback on `foo` should receive true as result');
-            } elseif ($ability == 'bar') {
+            } elseif ($ability === 'bar') {
                 $this->assertFalse($result, 'After callback on `bar` should receive false as result');
             } else {
                 $this->assertNull($result, 'After callback on `missing` should receive null as result');
@@ -312,7 +314,7 @@ class AuthAccessGateTest extends TestCase
         $gate = $this->getBasicGate();
 
         $gate->after(function ($user, $ability, $result) {
-            return $ability == 'allow';
+            return $ability === 'allow';
         });
 
         $gate->after(function ($user, $ability, $result) {
@@ -328,7 +330,7 @@ class AuthAccessGateTest extends TestCase
         $gate = $this->getBasicGate();
 
         $gate->define('foo', function ($user) {
-            $this->assertEquals(1, $user->id);
+            $this->assertSame(1, $user->id);
 
             return true;
         });
@@ -519,7 +521,7 @@ class AuthAccessGateTest extends TestCase
 
         // Assert that the callback receives the new user with ID of 2 instead of ID of 1...
         $gate->define('foo', function ($user) {
-            $this->assertEquals(2, $user->id);
+            $this->assertSame(2, $user->id);
 
             return true;
         });
@@ -541,16 +543,16 @@ class AuthAccessGateTest extends TestCase
         };
         $gate->guessPolicyNamesUsing($guesserCallback);
         $gate->getPolicyFor('fooClass');
-        $this->assertEquals(1, $counter);
+        $this->assertSame(1, $counter);
 
         // now the guesser callback should be present on the new gate as well
         $newGate = $gate->forUser((object) ['id' => 1]);
 
         $newGate->getPolicyFor('fooClass');
-        $this->assertEquals(2, $counter);
+        $this->assertSame(2, $counter);
 
         $newGate->getPolicyFor('fooClass');
-        $this->assertEquals(3, $counter);
+        $this->assertSame(3, $counter);
     }
 
     /**
@@ -672,7 +674,7 @@ class AuthAccessGateTest extends TestCase
         $this->assertSame('Not allowed to view as it is not published.', $response->message());
         $this->assertFalse($response->allowed());
         $this->assertTrue($response->denied());
-        $this->assertEquals($response->code(), 'unpublished');
+        $this->assertSame('unpublished', $response->code());
     }
 
     public function testAuthorizeReturnsAnAllowedResponseForATruthyReturn()
