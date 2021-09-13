@@ -167,6 +167,13 @@ abstract class Model implements Arrayable, ArrayAccess, HasBroadcastChannel, Jso
     protected static $lazyLoadingViolationCallback;
 
     /**
+     * Indicates if broadcasting is currently enabled.
+     *
+     * @var bool
+     */
+    protected static $isBroadcasting = true;
+
+    /**
      * The name of the "created at" column.
      *
      * @var string|null
@@ -378,6 +385,25 @@ abstract class Model implements Arrayable, ArrayAccess, HasBroadcastChannel, Jso
     }
 
     /**
+     * Execute a callback without broadcasting any model events for all model types.
+     *
+     * @param  callable  $callback
+     * @return mixed
+     */
+    public static function withoutBroadcasting(callable $callback)
+    {
+        $isBroadcasting = static::$isBroadcasting;
+
+        static::$isBroadcasting = false;
+
+        try {
+            return $callback();
+        } finally {
+            static::$isBroadcasting = $isBroadcasting;
+        }
+    }
+
+    /**
      * Fill the model with an array of attributes.
      *
      * @param  array  $attributes
@@ -526,7 +552,7 @@ abstract class Model implements Arrayable, ArrayAccess, HasBroadcastChannel, Jso
      * Get all of the models from the database.
      *
      * @param  array|mixed  $columns
-     * @return \Illuminate\Database\Eloquent\Collection|static[]
+     * @return \Illuminate\Database\Eloquent\Collection<int, static>
      */
     public static function all($columns = ['*'])
     {
@@ -852,6 +878,24 @@ abstract class Model implements Arrayable, ArrayAccess, HasBroadcastChannel, Jso
     }
 
     /**
+     * Update the model in the database within a transaction.
+     *
+     * @param  array  $attributes
+     * @param  array  $options
+     * @return bool
+     *
+     * @throws \Throwable
+     */
+    public function updateOrFail(array $attributes = [], array $options = [])
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        return $this->fill($attributes)->saveOrFail($options);
+    }
+
+    /**
      * Update the model in the database without raising any events.
      *
      * @param  array  $attributes
@@ -958,7 +1002,7 @@ abstract class Model implements Arrayable, ArrayAccess, HasBroadcastChannel, Jso
     }
 
     /**
-     * Save the model to the database using transaction.
+     * Save the model to the database within a transaction.
      *
      * @param  array  $options
      * @return bool

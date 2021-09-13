@@ -189,7 +189,7 @@ class Container implements ArrayAccess, ContainerContract
     /**
      *  {@inheritdoc}
      */
-    public function has($id)
+    public function has(string $id): bool
     {
         return $this->bound($id);
     }
@@ -695,7 +695,7 @@ class Container implements ArrayAccess, ContainerContract
     /**
      *  {@inheritdoc}
      */
-    public function get($id)
+    public function get(string $id)
     {
         try {
             return $this->resolve($id);
@@ -1237,7 +1237,6 @@ class Container implements ArrayAccess, ContainerContract
      * @param  string  $abstract
      * @param  object  $object
      * @param  array  $callbacksPerType
-     *
      * @return array
      */
     protected function getCallbacksForType($abstract, $object, array $callbacksPerType)
