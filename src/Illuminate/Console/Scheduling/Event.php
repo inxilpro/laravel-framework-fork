@@ -190,8 +190,8 @@ class Event
      */
     public function run(Container $container)
     {
-        if ($this->withoutOverlapping &&
-            ! $this->mutex->create($this)) {
+        if ($this->withoutOverlapping) {
+            $this->runCommandWithoutOverlapping($container);
             return;
         }
 
@@ -208,6 +208,28 @@ class Event
     public function mutexName()
     {
         return 'framework'.DIRECTORY_SEPARATOR.'schedule-'.sha1($this->expression.$this->command);
+    }
+
+    /**
+     * Run the command without overlapping.
+     *
+     * @param  \Illuminate\Contracts\Container\Container  $container
+     *
+     * @return void
+     */
+    protected function runCommandWithoutOverlapping(Container $container)
+    {
+        if (! $this->mutex->create($this)) {
+            return;
+        }
+
+        try {
+            $this->runInBackground
+                ? $this->runCommandInBackground($container)
+                : $this->runCommandInForeground($container);
+        } finally {
+            $this->mutex->forget($this);
+        }
     }
 
     /**
