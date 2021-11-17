@@ -3,6 +3,7 @@
 namespace Illuminate\Tests\Auth;
 
 use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -54,6 +55,19 @@ class AuthorizesResourcesTest extends TestCase
         $this->assertHasMiddleware($controller, 'destroy', 'can:delete,user');
     }
 
+    public function testImplicitModelAndParameterName()
+    {
+        $controller = new AuthorizesResourcesImplicitlyController;
+
+        $this->assertHasMiddleware(
+            $controller, 'index', 'can:viewAny,Illuminate\Tests\Auth\AuthorizesResourcesImplicitlyModel'
+        );
+
+        $this->assertHasMiddleware(
+            $controller, 'destroy', 'can:delete,test'
+        );
+    }
+
     /**
      * Assert that the given middleware has been registered on the given controller for the given method.
      *
@@ -67,7 +81,7 @@ class AuthorizesResourcesTest extends TestCase
         $router = new Router(new Dispatcher);
 
         $router->aliasMiddleware('can', AuthorizesResourcesMiddleware::class);
-        $router->get($method)->uses(AuthorizesResourcesController::class.'@'.$method);
+        $router->get($method)->uses(get_class($controller).'@'.$method);
 
         $this->assertSame(
             'caught '.$middleware,
@@ -117,6 +131,31 @@ class AuthorizesResourcesController extends Controller
     }
 
     public function destroy()
+    {
+        //
+    }
+}
+
+class AuthorizesResourcesImplicitlyModel extends Model
+{
+    //
+}
+
+class AuthorizesResourcesImplicitlyController extends Controller
+{
+    use AuthorizesRequests;
+
+    public function __construct()
+    {
+        $this->authorizeResource();
+    }
+
+    public function index()
+    {
+        //
+    }
+
+    public function destroy(Model $parent, AuthorizesResourcesImplicitlyModel $test)
     {
         //
     }

@@ -3,7 +3,12 @@
 namespace Illuminate\Foundation\Auth\Access;
 
 use Illuminate\Contracts\Auth\Access\Gate;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Reflector;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use ReflectionMethod;
 
 trait AuthorizesRequests
 {
@@ -74,14 +79,21 @@ trait AuthorizesRequests
     /**
      * Authorize a resource action based on the incoming request.
      *
-     * @param  string  $model
+     * @param  string|null  $model
      * @param  string|null  $parameter
      * @param  array  $options
      * @param  \Illuminate\Http\Request|null  $request
      * @return void
+     * @throws \InvalidArgumentException
      */
-    public function authorizeResource($model, $parameter = null, array $options = [], $request = null)
+    public function authorizeResource($model = null, $parameter = null, array $options = [], $request = null)
     {
+        if (! $model) {
+            $modelAndParameter = $this->guessModelAndParameterNameForResource();
+            $model = $modelAndParameter[0];
+            $parameter = $parameter ?: $modelAndParameter[1];
+        }
+
         $parameter = $parameter ?: Str::snake(class_basename($model));
 
         $middleware = [];
@@ -95,6 +107,49 @@ trait AuthorizesRequests
         foreach ($middleware as $middlewareName => $methods) {
             $this->middleware($middlewareName, $options)->only($methods);
         }
+    }
+
+    /**
+     * Guess the model that is associated with this resource controller.
+     *
+     * @return array
+     * @throws \InvalidArgumentException
+     */
+    protected function guessModelAndParameterNameForResource()
+    {
+        $methods = array_keys(Arr::except($this->resourceAbilityMap(), $this->resourceMethodsWithoutModels()));
+
+        foreach ($methods as $method) {
+            if ($modelAndParameterName = $this->getModelAndParameterNameFromResourceMethod($method)) {
+                return $modelAndParameterName;
+            }
+        }
+
+        throw new InvalidArgumentException('Unable to guess model for authorizeResource().');
+    }
+
+    /**
+     * Get the last Model parameter from a resource method.
+     *
+     * @param  string  $method
+     * @return null|array
+     */
+    protected function getModelAndParameterNameFromResourceMethod($method)
+    {
+        if (! method_exists($this, $method)) {
+            return null;
+        }
+
+        return collect((new ReflectionMethod($this, $method))->getParameters())
+            ->map(function ($parameter) {
+                return [Reflector::getParameterClassName($parameter), $parameter->getName()];
+            })
+            ->filter(function ($parameter) {
+                return $parameter[0]
+                    && class_exists($parameter[0])
+                    && is_subclass_of($parameter[0], Model::class, true);
+            })
+            ->last();
     }
 
     /**
