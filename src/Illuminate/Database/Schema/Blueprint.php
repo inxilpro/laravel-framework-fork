@@ -132,7 +132,7 @@ class Blueprint
             $method = 'compile'.ucfirst($command->name);
 
             if (method_exists($grammar, $method) || $grammar::hasMacro($method)) {
-                if (! is_null($sql = $grammar->$method($this, $command, $connection))) {
+                if (! is_null($sql = $grammar->$method($this, $command))) {
                     $statements = array_merge($statements, (array) $sql);
                 }
             }

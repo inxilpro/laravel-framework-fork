@@ -963,6 +963,6 @@ class DatabaseSQLiteSchemaGrammarTest extends TestCase
 
     public function getGrammar()
     {
-        return new SQLiteGrammar;
+        return new SQLiteGrammar($this->getConnection());
     }
 }

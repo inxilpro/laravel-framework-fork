@@ -5,6 +5,7 @@ namespace Illuminate\Tests\Database;
 use BadMethodCallException;
 use Closure;
 use DateTime;
+use Illuminate\Database\Connection;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
@@ -2637,9 +2638,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testUpdateOrInsertMethod()
     {
+        $connection = m::mock(Connection::class);
         $builder = m::mock(Builder::class.'[where,exists,insert]', [
-            m::mock(ConnectionInterface::class),
-            new Grammar,
+            $connection,
+            new Grammar($connection),
             m::mock(Processor::class),
         ]);
 
@@ -2649,9 +2651,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
         $this->assertTrue($builder->updateOrInsert(['email' => 'foo'], ['name' => 'bar']));
 
+        $connection = m::mock(Connection::class);
         $builder = m::mock(Builder::class.'[where,exists,update]', [
-            m::mock(ConnectionInterface::class),
-            new Grammar,
+            $connection,
+            new Grammar($connection),
             m::mock(Processor::class),
         ]);
 
@@ -2665,9 +2668,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testUpdateOrInsertMethodWorksWithEmptyUpdateValues()
     {
+        $connection = m::mock(Connection::class);
         $builder = m::spy(Builder::class.'[where,exists,update]', [
-            m::mock(ConnectionInterface::class),
-            new Grammar,
+            $connection,
+            new Grammar($connection),
             m::mock(Processor::class),
         ]);
 
@@ -2795,7 +2799,7 @@ class DatabaseQueryBuilderTest extends TestCase
         $builder->getConnection()->shouldReceive('statement')->once()->with('truncate table "users"', []);
         $builder->from('users')->truncate();
 
-        $sqlite = new SQLiteGrammar;
+        $sqlite = new SQLiteGrammar(m::mock(Connection::class));
         $builder = $this->getBuilder();
         $builder->from('users');
         $this->assertEquals([
@@ -2931,10 +2935,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testMySqlUpdateWrappingJson()
     {
-        $grammar = new MySqlGrammar;
+        $connection = $this->createMock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        $connection = $this->createMock(ConnectionInterface::class);
         $connection->expects($this->once())
                     ->method('update')
                     ->with(
@@ -2949,10 +2953,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testMySqlUpdateWrappingNestedJson()
     {
-        $grammar = new MySqlGrammar;
+        $connection = $this->createMock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        $connection = $this->createMock(ConnectionInterface::class);
         $connection->expects($this->once())
                     ->method('update')
                     ->with(
@@ -2967,10 +2971,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testMySqlUpdateWrappingJsonArray()
     {
-        $grammar = new MySqlGrammar;
+        $connection = $this->createMock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        $connection = $this->createMock(ConnectionInterface::class);
         $connection->expects($this->once())
                     ->method('update')
                     ->with(
@@ -2994,10 +2998,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testMySqlUpdateWrappingJsonPathArrayIndex()
     {
-        $grammar = new MySqlGrammar;
+        $connection = $this->createMock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        $connection = $this->createMock(ConnectionInterface::class);
         $connection->expects($this->once())
                     ->method('update')
                     ->with(
@@ -3017,10 +3021,10 @@ class DatabaseQueryBuilderTest extends TestCase
 
     public function testMySqlUpdateWithJsonPreparesBindingsCorrectly()
     {
-        $grammar = new MySqlGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        $connection = m::mock(ConnectionInterface::class);
         $connection->shouldReceive('update')
                     ->once()
                     ->with(
@@ -4437,7 +4441,7 @@ SQL;
 
     protected function getBuilder()
     {
-        $grammar = new Grammar;
+        $grammar = new Grammar($this->getConnection());
         $processor = m::mock(Processor::class);
 
         return new Builder($this->getConnection(), $grammar, $processor);
@@ -4445,50 +4449,56 @@ SQL;
 
     protected function getPostgresBuilder()
     {
-        $grammar = new PostgresGrammar;
+        $connection = $this->getConnection();
+        $grammar = new PostgresGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        return new Builder($this->getConnection(), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     protected function getMySqlBuilder()
     {
-        $grammar = new MySqlGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     protected function getSQLiteBuilder()
     {
-        $grammar = new SQLiteGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new SQLiteGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     protected function getSqlServerBuilder()
     {
-        $grammar = new SqlServerGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new SqlServerGrammar($connection);
         $processor = m::mock(Processor::class);
 
-        return new Builder($this->getConnection(), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     protected function getMySqlBuilderWithProcessor()
     {
-        $grammar = new MySqlGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new MySqlGrammar($connection);
         $processor = new MySqlProcessor;
 
-        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     protected function getPostgresBuilderWithProcessor()
     {
-        $grammar = new PostgresGrammar;
+        $connection = m::mock(Connection::class);
+        $grammar = new PostgresGrammar($connection);
         $processor = new PostgresProcessor;
 
-        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
+        return new Builder($connection, $grammar, $processor);
     }
 
     /**
@@ -4496,9 +4506,11 @@ SQL;
      */
     protected function getMockQueryBuilder()
     {
+        $connection = m::mock(Connection::class);
+
         return m::mock(Builder::class, [
-            m::mock(ConnectionInterface::class),
-            new Grammar,
+            $connection,
+            new Grammar($connection),
             m::mock(Processor::class),
         ])->makePartial();
     }

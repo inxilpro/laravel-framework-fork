@@ -60,7 +60,8 @@ class SchemaBuilderTest extends DatabaseTestCase
             $table->tinyInteger('test_column')->change();
         });
 
-        $blueprint->build($this->getConnection(), new SQLiteGrammar);
+        $connection = $this->getConnection();
+        $blueprint->build($connection, new SQLiteGrammar($connection));
 
         $this->assertArrayHasKey(TinyInteger::NAME, Type::getTypesMap());
         $this->assertSame('tinyinteger', Schema::getColumnType('test', 'test_column'));
@@ -82,7 +83,8 @@ class SchemaBuilderTest extends DatabaseTestCase
             $table->tinyInteger('test_column')->change();
         });
 
-        $blueprint->build($this->getConnection(), new SQLiteGrammar);
+        $connection = $this->getConnection();
+        $blueprint->build($connection, new SQLiteGrammar($connection));
 
         $this->assertArrayHasKey(TinyInteger::NAME, Type::getTypesMap());
         $this->assertSame('tinyinteger', Schema::getColumnType('test', 'test_column'));

@@ -1391,6 +1391,6 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
 
     public function getGrammar()
     {
-        return new MySqlGrammar;
+        return new MySqlGrammar($this->getConnection());
     }
 }

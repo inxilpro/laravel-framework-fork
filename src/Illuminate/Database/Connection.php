@@ -238,7 +238,7 @@ class Connection implements ConnectionInterface
      */
     protected function getDefaultQueryGrammar()
     {
-        return new QueryGrammar;
+        return new QueryGrammar($this);
     }
 
     /**

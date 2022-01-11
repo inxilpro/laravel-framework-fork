@@ -967,6 +967,6 @@ class DatabaseSqlServerSchemaGrammarTest extends TestCase
 
     public function getGrammar()
     {
-        return new SqlServerGrammar;
+        return new SqlServerGrammar($this->getConnection());
     }
 }

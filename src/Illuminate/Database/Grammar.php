@@ -12,11 +12,29 @@ abstract class Grammar
     use Macroable;
 
     /**
+     * The database connection.
+     *
+     * @var \Illuminate\Database\Connection
+     */
+    protected $connection;
+
+    /**
      * The grammar table prefix.
      *
      * @var string
      */
     protected $tablePrefix = '';
+
+    /**
+     * Constructor.
+     *
+     * @param  \Illuminate\Database\Connection  $connection
+     * @return void
+     */
+    public function __construct($connection)
+    {
+        $this->connection = $connection;
+    }
 
     /**
      * Wrap an array of values.

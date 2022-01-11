@@ -4,7 +4,6 @@ namespace Illuminate\Database\Schema\Grammars;
 
 use Doctrine\DBAL\Schema\AbstractSchemaManager as SchemaManager;
 use Doctrine\DBAL\Schema\TableDiff;
-use Illuminate\Database\Connection;
 use Illuminate\Database\Grammar as BaseGrammar;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
@@ -32,12 +31,11 @@ abstract class Grammar extends BaseGrammar
      * Compile a create database command.
      *
      * @param  string  $name
-     * @param  \Illuminate\Database\Connection  $connection
      * @return void
      *
      * @throws \LogicException
      */
-    public function compileCreateDatabase($name, $connection)
+    public function compileCreateDatabase($name)
     {
         throw new LogicException('This database driver does not support creating databases.');
     }
@@ -60,12 +58,11 @@ abstract class Grammar extends BaseGrammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      */
-    public function compileRenameColumn(Blueprint $blueprint, Fluent $command, Connection $connection)
+    public function compileRenameColumn(Blueprint $blueprint, Fluent $command)
     {
-        return RenameColumn::compile($this, $blueprint, $command, $connection);
+        return RenameColumn::compile($this, $blueprint, $command, $this->connection);
     }
 
     /**
@@ -73,14 +70,13 @@ abstract class Grammar extends BaseGrammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      *
      * @throws \RuntimeException
      */
-    public function compileChange(Blueprint $blueprint, Fluent $command, Connection $connection)
+    public function compileChange(Blueprint $blueprint, Fluent $command)
     {
-        return ChangeColumn::compile($this, $blueprint, $command, $connection);
+        return ChangeColumn::compile($this, $blueprint, $command, $this->connection);
     }
 
     /**

@@ -1127,7 +1127,7 @@ class DatabasePostgresSchemaGrammarTest extends TestCase
 
     public function getGrammar()
     {
-        return new PostgresGrammar;
+        return new PostgresGrammar($this->getConnection());
     }
 
     public function testGrammarsAreMacroable()
