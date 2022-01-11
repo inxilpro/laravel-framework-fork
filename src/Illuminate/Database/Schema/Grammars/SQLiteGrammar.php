@@ -261,17 +261,16 @@ class SQLiteGrammar extends Grammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      */
-    public function compileDropColumn(Blueprint $blueprint, Fluent $command, Connection $connection)
+    public function compileDropColumn(Blueprint $blueprint, Fluent $command)
     {
         $tableDiff = $this->getDoctrineTableDiff(
-            $blueprint, $schema = $connection->getDoctrineSchemaManager()
+            $blueprint, $schema = $this->connection->getDoctrineSchemaManager()
         );
 
         foreach ($command->columns as $name) {
-            $tableDiff->removedColumns[$name] = $connection->getDoctrineColumn(
+            $tableDiff->removedColumns[$name] = $this->connection->getDoctrineColumn(
                 $this->getTablePrefix().$blueprint->getTable(), $name
             );
         }
@@ -340,14 +339,13 @@ class SQLiteGrammar extends Grammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      *
      * @throws \RuntimeException
      */
-    public function compileRenameIndex(Blueprint $blueprint, Fluent $command, Connection $connection)
+    public function compileRenameIndex(Blueprint $blueprint, Fluent $command)
     {
-        $schemaManager = $connection->getDoctrineSchemaManager();
+        $schemaManager = $this->connection->getDoctrineSchemaManager();
 
         $indexes = $schemaManager->listTableIndexes($this->getTablePrefix().$blueprint->getTable());
 

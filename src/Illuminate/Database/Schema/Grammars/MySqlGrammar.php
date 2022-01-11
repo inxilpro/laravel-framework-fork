@@ -30,16 +30,15 @@ class MySqlGrammar extends Grammar
      * Compile a create database command.
      *
      * @param  string  $name
-     * @param  \Illuminate\Database\Connection  $connection
      * @return string
      */
-    public function compileCreateDatabase($name, $connection)
+    public function compileCreateDatabase($name)
     {
         return sprintf(
             'create database %s default character set %s default collate %s',
             $this->wrapValue($name),
-            $this->wrapValue($connection->getConfig('charset')),
-            $this->wrapValue($connection->getConfig('collation')),
+            $this->wrapValue($this->connection->getConfig('charset')),
+            $this->wrapValue($this->connection->getConfig('collation')),
         );
     }
 
@@ -82,27 +81,26 @@ class MySqlGrammar extends Grammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      */
-    public function compileCreate(Blueprint $blueprint, Fluent $command, Connection $connection)
+    public function compileCreate(Blueprint $blueprint, Fluent $command)
     {
         $sql = $this->compileCreateTable(
-            $blueprint, $command, $connection
+            $blueprint, $command
         );
 
         // Once we have the primary SQL, we can add the encoding option to the SQL for
         // the table.  Then, we can check if a storage engine has been supplied for
         // the table. If so, we will add the engine declaration to the SQL query.
         $sql = $this->compileCreateEncoding(
-            $sql, $connection, $blueprint
+            $sql, $this->connection, $blueprint
         );
 
         // Finally, we will append the engine configuration onto this SQL statement as
         // the final thing we do before returning this finished SQL. Once this gets
         // added the query will be ready to execute against the real connections.
         return array_values(array_filter(array_merge([$this->compileCreateEngine(
-            $sql, $connection, $blueprint
+            $sql, $this->connection, $blueprint
         )], $this->compileAutoIncrementStartingValues($blueprint))));
     }
 
@@ -111,10 +109,9 @@ class MySqlGrammar extends Grammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @param  \Illuminate\Database\Connection  $connection
      * @return array
      */
-    protected function compileCreateTable($blueprint, $command, $connection)
+    protected function compileCreateTable($blueprint, $command)
     {
         return trim(sprintf('%s table %s (%s)',
             $blueprint->temporary ? 'create temporary' : 'create',

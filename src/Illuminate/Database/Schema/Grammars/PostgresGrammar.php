@@ -39,15 +39,14 @@ class PostgresGrammar extends Grammar
      * Compile a create database command.
      *
      * @param  string  $name
-     * @param  \Illuminate\Database\Connection  $connection
      * @return string
      */
-    public function compileCreateDatabase($name, $connection)
+    public function compileCreateDatabase($name)
     {
         return sprintf(
             'create database %s encoding %s',
             $this->wrapValue($name),
-            $this->wrapValue($connection->getConfig('charset')),
+            $this->wrapValue($this->connection->getConfig('charset')),
         );
     }
 

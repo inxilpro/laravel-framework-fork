@@ -32,10 +32,9 @@ class SqlServerGrammar extends Grammar
      * Compile a create database command.
      *
      * @param  string  $name
-     * @param  \Illuminate\Database\Connection  $connection
      * @return string
      */
-    public function compileCreateDatabase($name, $connection)
+    public function compileCreateDatabase($name)
     {
         return sprintf(
             'create database %s',
