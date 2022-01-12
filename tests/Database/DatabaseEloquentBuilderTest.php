@@ -1772,7 +1772,7 @@ class DatabaseEloquentBuilderTest extends TestCase
     {
         $grammarClass = 'Illuminate\Database\Query\Grammars\\'.$database.'Grammar';
         $processorClass = 'Illuminate\Database\Query\Processors\\'.$database.'Processor';
-        $grammar = new $grammarClass;
+        $grammar = new $grammarClass(m::mock(Connection::class));
         $processor = new $processorClass;
         $connection = m::mock(ConnectionInterface::class, ['getQueryGrammar' => $grammar, 'getPostProcessor' => $processor]);
         $connection->shouldReceive('query')->andReturnUsing(function () use ($connection, $grammar, $processor) {

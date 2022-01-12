@@ -29,7 +29,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn->shouldReceive('getConfig')->once()->with('collation')->andReturn('utf8_unicode_ci');
         $conn->shouldReceive('getConfig')->once()->with('engine')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci'", $statements[0]);
@@ -41,7 +41,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame('alter table `users` add `id` int unsigned not null auto_increment primary key, add `email` varchar(255) not null', $statements[0]);
@@ -59,7 +59,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn->shouldReceive('getConfig')->once()->with('collation')->andReturn('utf8_unicode_ci');
         $conn->shouldReceive('getConfig')->once()->with('engine')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(2, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci'", $statements[0]);
@@ -78,7 +78,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn->shouldReceive('getConfig')->once()->with('charset')->andReturn('utf8');
         $conn->shouldReceive('getConfig')->once()->with('collation')->andReturn('utf8_unicode_ci');
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB", $statements[0]);
@@ -93,7 +93,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn->shouldReceive('getConfig')->once()->with('collation')->andReturn('utf8_unicode_ci');
         $conn->shouldReceive('getConfig')->once()->with('engine')->andReturn('InnoDB');
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB", $statements[0]);
@@ -111,7 +111,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->once()->with('engine')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci'", $statements[0]);
@@ -126,7 +126,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn->shouldReceive('getConfig')->once()->with('collation')->andReturn('utf8_unicode_ci');
         $conn->shouldReceive('getConfig')->once()->with('engine')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) character set utf8mb4 collate 'utf8mb4_unicode_ci' not null) default character set utf8 collate 'utf8_unicode_ci'", $statements[0]);
@@ -138,11 +138,12 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $blueprint->create();
         $blueprint->increments('id');
         $blueprint->string('email');
-        $grammar = $this->getGrammar();
-        $grammar->setTablePrefix('prefix_');
 
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
+
+        $grammar = $this->getGrammar($conn);
+        $grammar->setTablePrefix('prefix_');
 
         $statements = $blueprint->toSql($conn, $grammar);
 
@@ -161,7 +162,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame('create temporary table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null)', $statements[0]);
@@ -1234,7 +1235,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $connection->shouldReceive('getConfig')->once()->once()->with('charset')->andReturn('utf8mb4_foo');
         $connection->shouldReceive('getConfig')->once()->once()->with('collation')->andReturn('utf8mb4_unicode_ci_foo');
 
-        $statement = $this->getGrammar()->compileCreateDatabase('my_database_a', $connection);
+        $statement = $this->getGrammar($connection)->compileCreateDatabase('my_database_a');
 
         $this->assertSame(
             'create database `my_database_a` default character set `utf8mb4_foo` default collate `utf8mb4_unicode_ci_foo`',
@@ -1245,7 +1246,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $connection->shouldReceive('getConfig')->once()->once()->with('charset')->andReturn('utf8mb4_bar');
         $connection->shouldReceive('getConfig')->once()->once()->with('collation')->andReturn('utf8mb4_unicode_ci_bar');
 
-        $statement = $this->getGrammar()->compileCreateDatabase('my_database_b', $connection);
+        $statement = $this->getGrammar($connection)->compileCreateDatabase('my_database_b');
 
         $this->assertSame(
             'create database `my_database_b` default character set `utf8mb4_bar` default collate `utf8mb4_unicode_ci_bar`',
@@ -1265,7 +1266,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $blueprint->string('my_column');
         $blueprint->string('my_other_column')->virtualAs('my_column');
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_column` varchar(255) not null, `my_other_column` varchar(255) as (my_column)) default character set utf8 collate 'utf8_unicode_ci'", $statements[0]);
@@ -1278,7 +1279,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_json_column` varchar(255) not null, `my_other_column` varchar(255) as (json_unquote(json_extract(`my_json_column`, '$.\"some_attribute\"'))))", $statements[0]);
@@ -1291,7 +1292,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_json_column` varchar(255) not null, `my_other_column` varchar(255) as (json_unquote(json_extract(`my_json_column`, '$.\"some_attribute\".\"nested\"'))))", $statements[0]);
@@ -1309,7 +1310,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $blueprint->string('my_column');
         $blueprint->string('my_other_column')->storedAs('my_column');
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_column` varchar(255) not null, `my_other_column` varchar(255) as (my_column) stored) default character set utf8 collate 'utf8_unicode_ci'", $statements[0]);
@@ -1322,7 +1323,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_json_column` varchar(255) not null, `my_other_column` varchar(255) as (json_unquote(json_extract(`my_json_column`, '$.\"some_attribute\"'))) stored)", $statements[0]);
@@ -1335,7 +1336,7 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         $conn = $this->getConnection();
         $conn->shouldReceive('getConfig')->andReturn(null);
 
-        $statements = $blueprint->toSql($conn, $this->getGrammar());
+        $statements = $blueprint->toSql($conn, $this->getGrammar($conn));
 
         $this->assertCount(1, $statements);
         $this->assertSame("create table `users` (`my_json_column` varchar(255) not null, `my_other_column` varchar(255) as (json_unquote(json_extract(`my_json_column`, '$.\"some_attribute\".\"nested\"'))) stored)", $statements[0]);
@@ -1389,8 +1390,8 @@ class DatabaseMySqlSchemaGrammarTest extends TestCase
         return m::mock(Connection::class);
     }
 
-    public function getGrammar()
+    public function getGrammar($connection = null)
     {
-        return new MySqlGrammar($this->getConnection());
+        return new MySqlGrammar($connection ?? $this->getConnection());
     }
 }

@@ -1051,7 +1051,7 @@ class DatabasePostgresSchemaGrammarTest extends TestCase
     {
         $connection = $this->getConnection();
         $connection->shouldReceive('getConfig')->once()->once()->with('charset')->andReturn('utf8_foo');
-        $statement = $this->getGrammar()->compileCreateDatabase('my_database_a', $connection);
+        $statement = $this->getGrammar($connection)->compileCreateDatabase('my_database_a');
 
         $this->assertSame(
             'create database "my_database_a" encoding "utf8_foo"',
@@ -1060,7 +1060,7 @@ class DatabasePostgresSchemaGrammarTest extends TestCase
 
         $connection = $this->getConnection();
         $connection->shouldReceive('getConfig')->once()->once()->with('charset')->andReturn('utf8_bar');
-        $statement = $this->getGrammar()->compileCreateDatabase('my_database_b', $connection);
+        $statement = $this->getGrammar($connection)->compileCreateDatabase('my_database_b');
 
         $this->assertSame(
             'create database "my_database_b" encoding "utf8_bar"',
@@ -1125,9 +1125,9 @@ class DatabasePostgresSchemaGrammarTest extends TestCase
         return m::mock(Connection::class);
     }
 
-    public function getGrammar()
+    public function getGrammar($connection = null)
     {
-        return new PostgresGrammar($this->getConnection());
+        return new PostgresGrammar($connection ?? $this->getConnection());
     }
 
     public function testGrammarsAreMacroable()
