@@ -316,7 +316,7 @@ abstract class Relation implements BuilderContract
      */
     public function toBase()
     {
-        return $this->query->getQuery();
+        return $this->query->toBase();
     }
 
     /**
