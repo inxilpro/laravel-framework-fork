@@ -1656,8 +1656,7 @@ class DatabaseEloquentBuilderTest extends TestCase
     {
         Carbon::setTestNow($now = '2017-10-10 10:10:10');
 
-        $connection = m::mock(Connection::class);
-        $query = new BaseBuilder($connection, new Grammar($connection), m::mock(Processor::class));
+        $query = new BaseBuilder(m::mock(ConnectionInterface::class), new Grammar(m::mock(Connection::class)), m::mock(Processor::class));
         $builder = new Builder($query);
         $model = new EloquentBuilderTestStub;
         $this->mockConnectionForModel($model, '');
@@ -1673,8 +1672,7 @@ class DatabaseEloquentBuilderTest extends TestCase
 
     public function testUpdateWithTimestampValue()
     {
-        $connection = m::mock(Connection::class);
-        $query = new BaseBuilder($connection, new Grammar($connection), m::mock(Processor::class));
+        $query = new BaseBuilder(m::mock(ConnectionInterface::class), new Grammar(m::mock(Connection::class)), m::mock(Processor::class));
         $builder = new Builder($query);
         $model = new EloquentBuilderTestStub;
         $this->mockConnectionForModel($model, '');
@@ -1688,8 +1686,7 @@ class DatabaseEloquentBuilderTest extends TestCase
 
     public function testUpdateWithoutTimestamp()
     {
-        $connection = m::mock(Connection::class);
-        $query = new BaseBuilder($connection, new Grammar($connection), m::mock(Processor::class));
+        $query = new BaseBuilder(m::mock(ConnectionInterface::class), new Grammar(m::mock(Connection::class)), m::mock(Processor::class));
         $builder = new Builder($query);
         $model = new EloquentBuilderTestStubWithoutTimestamp;
         $this->mockConnectionForModel($model, '');
@@ -1705,8 +1702,7 @@ class DatabaseEloquentBuilderTest extends TestCase
     {
         Carbon::setTestNow($now = '2017-10-10 10:10:10');
 
-        $connection = m::mock(Connection::class);
-        $query = new BaseBuilder($connection, new Grammar($connection), m::mock(Processor::class));
+        $query = new BaseBuilder(m::mock(ConnectionInterface::class), new Grammar(m::mock(Connection::class)), m::mock(Processor::class));
         $builder = new Builder($query);
         $model = new EloquentBuilderTestStub;
         $this->mockConnectionForModel($model, '');
@@ -1757,8 +1753,7 @@ class DatabaseEloquentBuilderTest extends TestCase
 
     public function testClone()
     {
-        $connection = m::mock(Connection::class);
-        $query = new BaseBuilder($connection, new Grammar($connection), m::mock(Processor::class));
+        $query = new BaseBuilder(m::mock(ConnectionInterface::class), new Grammar(m::mock(Connection::class)), m::mock(Processor::class));
         $builder = new Builder($query);
         $builder->select('*')->from('users');
         $clone = $builder->clone()->where('email', 'foo');
