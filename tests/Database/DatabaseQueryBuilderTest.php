@@ -4460,7 +4460,7 @@ SQL;
 
     protected function getBuilder()
     {
-        $grammar = new Grammar($this->getConnection());
+        $grammar = new Grammar(m::mock(Connection::class));
         $processor = m::mock(Processor::class);
 
         return new Builder($this->getConnection(), $grammar, $processor);
@@ -4468,56 +4468,50 @@ SQL;
 
     protected function getPostgresBuilder()
     {
-        $connection = $this->getConnection();
-        $grammar = new PostgresGrammar($connection);
+        $grammar = new PostgresGrammar(m::mock(Connection::class));
         $processor = m::mock(Processor::class);
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder($this->getConnection(), $grammar, $processor);
     }
 
     protected function getMySqlBuilder()
     {
-        $connection = m::mock(Connection::class);
-        $grammar = new MySqlGrammar($connection);
+        $grammar = new MySqlGrammar(m::mock(Connection::class));
         $processor = m::mock(Processor::class);
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
     }
 
     protected function getSQLiteBuilder()
     {
-        $connection = m::mock(Connection::class);
-        $grammar = new SQLiteGrammar($connection);
+        $grammar = new SQLiteGrammar(m::mock(Connection::class));
         $processor = m::mock(Processor::class);
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
     }
 
     protected function getSqlServerBuilder()
     {
-        $connection = m::mock(Connection::class);
-        $grammar = new SqlServerGrammar($connection);
+        $grammar = new SqlServerGrammar(m::mock(Connection::class));
         $processor = m::mock(Processor::class);
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder($this->getConnection(), $grammar, $processor);
     }
 
     protected function getMySqlBuilderWithProcessor()
     {
-        $connection = m::mock(Connection::class);
-        $grammar = new MySqlGrammar($connection);
+        $grammar = new MySqlGrammar(m::mock(Connection::class));
         $processor = new MySqlProcessor;
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
     }
 
     protected function getPostgresBuilderWithProcessor()
     {
-        $connection = m::mock(Connection::class);
-        $grammar = new PostgresGrammar($connection);
+        $grammar = new PostgresGrammar(m::mock(Connection::class));
         $processor = new PostgresProcessor;
 
-        return new Builder($connection, $grammar, $processor);
+        return new Builder(m::mock(ConnectionInterface::class), $grammar, $processor);
     }
 
     /**
@@ -4525,11 +4519,9 @@ SQL;
      */
     protected function getMockQueryBuilder()
     {
-        $connection = m::mock(Connection::class);
-
         return m::mock(Builder::class, [
-            $connection,
-            new Grammar($connection),
+            m::mock(ConnectionInterface::class),
+            new Grammar(m::mock(Connection::class)),
             m::mock(Processor::class),
         ])->makePartial();
     }
