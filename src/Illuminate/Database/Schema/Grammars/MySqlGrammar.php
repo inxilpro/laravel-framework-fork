@@ -85,23 +85,20 @@ class MySqlGrammar extends Grammar
      */
     public function compileCreate(Blueprint $blueprint, Fluent $command)
     {
-        $sql = $this->compileCreateTable(
-            $blueprint, $command
-        );
+        $sql = $this->compileCreateTable($blueprint, $command);
 
         // Once we have the primary SQL, we can add the encoding option to the SQL for
         // the table.  Then, we can check if a storage engine has been supplied for
         // the table. If so, we will add the engine declaration to the SQL query.
-        $sql = $this->compileCreateEncoding(
-            $sql, $this->connection, $blueprint
-        );
+        $sql = $this->compileCreateEncoding($sql, $blueprint);
 
         // Finally, we will append the engine configuration onto this SQL statement as
         // the final thing we do before returning this finished SQL. Once this gets
         // added the query will be ready to execute against the real connections.
-        return array_values(array_filter(array_merge([$this->compileCreateEngine(
-            $sql, $this->connection, $blueprint
-        )], $this->compileAutoIncrementStartingValues($blueprint))));
+        return array_values(array_filter(array_merge(
+            [$this->compileCreateEngine($sql, $blueprint)],
+            $this->compileAutoIncrementStartingValues($blueprint)
+        )));
     }
 
     /**
@@ -109,7 +106,7 @@ class MySqlGrammar extends Grammar
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
-     * @return array
+     * @return string
      */
     protected function compileCreateTable($blueprint, $command)
     {
@@ -124,18 +121,17 @@ class MySqlGrammar extends Grammar
      * Append the character set specifications to a command.
      *
      * @param  string  $sql
-     * @param  \Illuminate\Database\Connection  $connection
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @return string
      */
-    protected function compileCreateEncoding($sql, Connection $connection, Blueprint $blueprint)
+    protected function compileCreateEncoding($sql, Blueprint $blueprint)
     {
         // First we will set the character set if one has been set on either the create
         // blueprint itself or on the root configuration for the connection that the
         // table is being created on. We will add these to the create table query.
         if (isset($blueprint->charset)) {
             $sql .= ' default character set '.$blueprint->charset;
-        } elseif (! is_null($charset = $connection->getConfig('charset'))) {
+        } elseif (! is_null($charset = $this->connection->getConfig('charset'))) {
             $sql .= ' default character set '.$charset;
         }
 
@@ -144,7 +140,7 @@ class MySqlGrammar extends Grammar
         // connection that the query is targeting. We'll add it to this SQL query.
         if (isset($blueprint->collation)) {
             $sql .= " collate '{$blueprint->collation}'";
-        } elseif (! is_null($collation = $connection->getConfig('collation'))) {
+        } elseif (! is_null($collation = $this->connection->getConfig('collation'))) {
             $sql .= " collate '{$collation}'";
         }
 
@@ -155,15 +151,14 @@ class MySqlGrammar extends Grammar
      * Append the engine specifications to a command.
      *
      * @param  string  $sql
-     * @param  \Illuminate\Database\Connection  $connection
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @return string
      */
-    protected function compileCreateEngine($sql, Connection $connection, Blueprint $blueprint)
+    protected function compileCreateEngine($sql, Blueprint $blueprint)
     {
         if (isset($blueprint->engine)) {
             return $sql.' engine = '.$blueprint->engine;
-        } elseif (! is_null($engine = $connection->getConfig('engine'))) {
+        } elseif (! is_null($engine = $this->connection->getConfig('engine'))) {
             return $sql.' engine = '.$engine;
         }
 
