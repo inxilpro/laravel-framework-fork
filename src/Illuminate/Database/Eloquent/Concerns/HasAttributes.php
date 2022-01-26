@@ -625,11 +625,13 @@ trait HasAttributes
             return $this->attributeCastCache[$key];
         }
 
-        $value = call_user_func($this->{Str::camel($key)}()->get ?: function ($value) {
+        $attribute = $this->{Str::camel($key)}();
+
+        $value = call_user_func($attribute->get ?: function ($value) {
             return $value;
         }, $value, $this->attributes);
 
-        if (! is_object($value)) {
+        if (! is_object($value) || ! $attribute->withObjectCaching) {
             unset($this->attributeCastCache[$key]);
         } else {
             $this->attributeCastCache[$key] = $value;
@@ -928,7 +930,7 @@ trait HasAttributes
         // If this attribute contains a JSON ->, we'll set the proper value in the
         // attribute's underlying array. This takes care of properly nesting an
         // attribute in the array's value in the case of deeply nested items.
-        if (Str::contains($key, '->')) {
+        if (str_contains($key, '->')) {
             return $this->fillJsonAttribute($key, $value);
         }
 
@@ -999,7 +1001,9 @@ trait HasAttributes
      */
     protected function setAttributeMarkedMutatedAttributeValue($key, $value)
     {
-        $callback = $this->{Str::camel($key)}()->set ?: function ($value) use ($key) {
+        $attribute = $this->{Str::camel($key)}();
+
+        $callback = $attribute->set ?: function ($value) use ($key) {
             $this->attributes[$key] = $value;
         };
 
@@ -1010,7 +1014,7 @@ trait HasAttributes
             )
         );
 
-        if (! is_object($value)) {
+        if (! is_object($value) || ! $attribute->withObjectCaching) {
             unset($this->attributeCastCache[$key]);
         } else {
             $this->attributeCastCache[$key] = $value;
@@ -1554,7 +1558,7 @@ trait HasAttributes
 
         $arguments = [];
 
-        if (is_string($castType) && strpos($castType, ':') !== false) {
+        if (is_string($castType) && str_contains($castType, ':')) {
             $segments = explode(':', $castType, 2);
 
             $castType = $segments[0];
@@ -1580,7 +1584,7 @@ trait HasAttributes
      */
     protected function parseCasterClass($class)
     {
-        return strpos($class, ':') === false
+        return ! str_contains($class, ':')
             ? $class
             : explode(':', $class, 2)[0];
     }

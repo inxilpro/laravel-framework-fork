@@ -7,6 +7,7 @@ use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use ReflectionClass;
+use Traversable;
 
 trait CollectsResources
 {
@@ -48,7 +49,7 @@ trait CollectsResources
             return $this->collects;
         }
 
-        if (Str::endsWith(class_basename($this), 'Collection') &&
+        if (str_ends_with(class_basename($this), 'Collection') &&
             (class_exists($class = Str::replaceLast('Collection', '', get_class($this))) ||
              class_exists($class = Str::replaceLast('Collection', 'Resource', get_class($this))))) {
             return $class;
@@ -78,8 +79,7 @@ trait CollectsResources
      *
      * @return \ArrayIterator
      */
-    #[\ReturnTypeWillChange]
-    public function getIterator()
+    public function getIterator(): Traversable
     {
         return $this->collection->getIterator();
     }

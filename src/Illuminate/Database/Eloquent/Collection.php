@@ -7,7 +7,6 @@ use Illuminate\Contracts\Queue\QueueableEntity;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as BaseCollection;
-use Illuminate\Support\Str;
 use LogicException;
 
 /**
@@ -195,7 +194,7 @@ class Collection extends BaseCollection implements QueueableCollection
 
             $segments = explode('.', explode(':', $key)[0]);
 
-            if (Str::contains($key, ':')) {
+            if (str_contains($key, ':')) {
                 $segments[count($segments) - 1] .= ':'.explode(':', $key)[1];
             }
 
@@ -319,7 +318,7 @@ class Collection extends BaseCollection implements QueueableCollection
     /**
      * Get the array of primary keys.
      *
-     * @return array<int, mixed>
+     * @return array<int, array-key>
      */
     public function modelKeys()
     {
@@ -332,7 +331,7 @@ class Collection extends BaseCollection implements QueueableCollection
      * Merge the collection with the given items.
      *
      * @param  iterable<array-key, TModel>  $items
-     * @return static<TKey, TModel>
+     * @return static
      */
     public function merge($items)
     {
@@ -386,7 +385,7 @@ class Collection extends BaseCollection implements QueueableCollection
      * Reload a fresh model instance from the database for all the entities.
      *
      * @param  array<array-key, string>|string  $with
-     * @return static<TKey, TModel>
+     * @return static
      */
     public function fresh($with = [])
     {
@@ -414,7 +413,7 @@ class Collection extends BaseCollection implements QueueableCollection
      * Diff the collection with the given items.
      *
      * @param  iterable<array-key, TModel>  $items
-     * @return static<TKey, TModel>
+     * @return static
      */
     public function diff($items)
     {
@@ -435,7 +434,7 @@ class Collection extends BaseCollection implements QueueableCollection
      * Intersect the collection with the given items.
      *
      * @param  iterable<array-key, TModel>  $items
-     * @return static<TKey, TModel>
+     * @return static
      */
     public function intersect($items)
     {

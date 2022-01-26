@@ -15,13 +15,17 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\ForwardsCalls;
 use Illuminate\Support\Traits\Localizable;
+use Illuminate\Support\Traits\Macroable;
+use Illuminate\Testing\Constraints\SeeInOrder;
 use PHPUnit\Framework\Assert as PHPUnit;
 use ReflectionClass;
 use ReflectionProperty;
 
 class Mailable implements MailableContract, Renderable
 {
-    use Conditionable, ForwardsCalls, Localizable;
+    use Conditionable, ForwardsCalls, Localizable, Macroable {
+        __call as macroCall;
+    }
 
     /**
      * The locale of the message.
@@ -877,7 +881,7 @@ class Mailable implements MailableContract, Renderable
         [$html, $text] = $this->renderForAssertions();
 
         PHPUnit::assertTrue(
-            Str::contains($html, $string),
+            str_contains($html, $string),
             "Did not see expected text [{$string}] within email body."
         );
 
@@ -895,9 +899,24 @@ class Mailable implements MailableContract, Renderable
         [$html, $text] = $this->renderForAssertions();
 
         PHPUnit::assertFalse(
-            Str::contains($html, $string),
+            str_contains($html, $string),
             "Saw unexpected text [{$string}] within email body."
         );
+
+        return $this;
+    }
+
+    /**
+     * Assert that the given text strings are present in order in the HTML email body.
+     *
+     * @param  array  $strings
+     * @return $this
+     */
+    public function assertSeeInOrderInHtml($strings)
+    {
+        [$html, $text] = $this->renderForAssertions();
+
+        PHPUnit::assertThat($strings, new SeeInOrder($html));
 
         return $this;
     }
@@ -913,7 +932,7 @@ class Mailable implements MailableContract, Renderable
         [$html, $text] = $this->renderForAssertions();
 
         PHPUnit::assertTrue(
-            Str::contains($text, $string),
+            str_contains($text, $string),
             "Did not see expected text [{$string}] within text email body."
         );
 
@@ -931,9 +950,24 @@ class Mailable implements MailableContract, Renderable
         [$html, $text] = $this->renderForAssertions();
 
         PHPUnit::assertFalse(
-            Str::contains($text, $string),
+            str_contains($text, $string),
             "Saw unexpected text [{$string}] within text email body."
         );
+
+        return $this;
+    }
+
+    /**
+     * Assert that the given text strings are present in order in the plain-text email body.
+     *
+     * @param  array  $strings
+     * @return $this
+     */
+    public function assertSeeInOrderInText($strings)
+    {
+        [$html, $text] = $this->renderForAssertions();
+
+        PHPUnit::assertThat($strings, new SeeInOrder($text));
 
         return $this;
     }
@@ -1022,7 +1056,11 @@ class Mailable implements MailableContract, Renderable
      */
     public function __call($method, $parameters)
     {
-        if (Str::startsWith($method, 'with')) {
+        if (static::hasMacro($method)) {
+            return $this->macroCall($method, $parameters);
+        }
+
+        if (str_starts_with($method, 'with')) {
             return $this->with(Str::camel(substr($method, 4)), $parameters[0]);
         }
 

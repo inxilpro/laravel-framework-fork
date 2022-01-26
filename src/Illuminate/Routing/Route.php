@@ -59,6 +59,13 @@ class Route
     public $controller;
 
     /**
+     * The controller instance class name.
+     *
+     * @var string
+     */
+    public $controllerClass;
+
+    /**
      * The default values for the route.
      *
      * @var array
@@ -270,12 +277,24 @@ class Route
     public function getController()
     {
         if (! $this->controller) {
-            $class = $this->parseControllerCallback()[0];
-
-            $this->controller = $this->container->make(ltrim($class, '\\'));
+            $this->controller = $this->container->make($this->getControllerClass());
         }
 
         return $this->controller;
+    }
+
+    /**
+     * Get the controller class reference for the route.
+     *
+     * @return string
+     */
+    public function getControllerClass()
+    {
+        if (! $this->controllerClass) {
+            $this->controllerClass = ltrim($this->parseControllerCallback()[0], '\\');
+        }
+
+        return $this->controllerClass;
     }
 
     /**
@@ -914,7 +933,7 @@ class Route
     {
         $groupStack = last($this->router->getGroupStack());
 
-        if (isset($groupStack['namespace']) && strpos($action, '\\') !== 0) {
+        if (isset($groupStack['namespace']) && ! str_starts_with($action, '\\')) {
             return $groupStack['namespace'].'\\'.$action;
         }
 
@@ -1064,6 +1083,10 @@ class Route
     public function controllerMiddleware()
     {
         if (! $this->isControllerAction()) {
+            return [];
+        }
+
+        if (! $this->controllerDispatcher()->shouldGatherMiddleware($this->getControllerClass())) {
             return [];
         }
 

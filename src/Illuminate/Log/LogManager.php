@@ -113,14 +113,6 @@ class LogManager implements LoggerInterface
     }
 
     /**
-     * @return array
-     */
-    public function getChannels()
-    {
-        return $this->channels;
-    }
-
-    /**
      * Attempt to get the log from the local cache.
      *
      * @param  string  $name
@@ -168,7 +160,7 @@ class LogManager implements LoggerInterface
      */
     protected function parseTap($tap)
     {
-        return Str::contains($tap, ':') ? explode(':', $tap, 2) : [$tap, ''];
+        return str_contains($tap, ':') ? explode(':', $tap, 2) : [$tap, ''];
     }
 
     /**
@@ -532,6 +524,16 @@ class LogManager implements LoggerInterface
         }
 
         return $driver;
+    }
+
+    /**
+     * Get all of the resolved log channels.
+     *
+     * @return array
+     */
+    public function getChannels()
+    {
+        return $this->channels;
     }
 
     /**

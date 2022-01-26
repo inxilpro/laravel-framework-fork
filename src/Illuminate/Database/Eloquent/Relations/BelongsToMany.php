@@ -164,7 +164,7 @@ class BelongsToMany extends Relation
      */
     protected function resolveTableName($table)
     {
-        if (! Str::contains($table, '\\') || ! class_exists($table)) {
+        if (! str_contains($table, '\\') || ! class_exists($table)) {
             return $table;
         }
 
@@ -983,7 +983,7 @@ class BelongsToMany extends Relation
     /**
      * Query lazily, by chunking the results of a query by comparing IDs.
      *
-     * @param  int  $count
+     * @param  int  $chunkSize
      * @param  string|null  $column
      * @param  string|null  $alias
      * @return \Illuminate\Support\LazyCollection
@@ -1059,7 +1059,7 @@ class BelongsToMany extends Relation
             // To get the pivots attributes we will just take any of the attributes which
             // begin with "pivot_" and add those to this arrays, as well as unsetting
             // them from the parent's models since they exist in a different table.
-            if (strpos($key, 'pivot_') === 0) {
+            if (str_starts_with($key, 'pivot_')) {
                 $values[substr($key, 6)] = $value;
 
                 unset($model->$key);
@@ -1445,7 +1445,7 @@ class BelongsToMany extends Relation
      */
     public function qualifyPivotColumn($column)
     {
-        return Str::contains($column, '.')
+        return str_contains($column, '.')
                     ? $column
                     : $this->table.'.'.$column;
     }

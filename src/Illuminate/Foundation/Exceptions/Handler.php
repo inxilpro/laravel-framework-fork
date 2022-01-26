@@ -224,17 +224,14 @@ class Handler implements ExceptionHandlerContract
             return;
         }
 
-        if (Reflector::isCallable($reportCallable = [$e, 'report'])) {
-            if ($this->container->call($reportCallable) !== false) {
-                return;
-            }
+        if (Reflector::isCallable($reportCallable = [$e, 'report']) &&
+            $this->container->call($reportCallable) !== false) {
+            return;
         }
 
         foreach ($this->reportCallbacks as $reportCallback) {
-            if ($reportCallback->handles($e)) {
-                if ($reportCallback($e) === false) {
-                    return;
-                }
+            if ($reportCallback->handles($e) && $reportCallback($e) === false) {
+                return;
             }
         }
 
@@ -541,7 +538,7 @@ class Handler implements ExceptionHandlerContract
             return config('app.debug') && app()->has(ExceptionRenderer::class)
                         ? $this->renderExceptionWithCustomRenderer($e)
                         : $this->renderExceptionWithSymfony($e, config('app.debug'));
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             return $this->renderExceptionWithSymfony($e, config('app.debug'));
         }
     }

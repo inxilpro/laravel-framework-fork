@@ -310,7 +310,7 @@ class PostgresGrammar extends Grammar
     /**
      * Compile the SQL needed to retrieve all view names.
      *
-     * @param  string|array  $schema
+     * @param  string|array  $searchPath
      * @return string
      */
     public function compileGetAllViews($searchPath)
