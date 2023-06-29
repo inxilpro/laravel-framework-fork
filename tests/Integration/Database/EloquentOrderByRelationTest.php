@@ -23,19 +23,23 @@ class EloquentOrderByRelationTest extends DatabaseTestCase
             $table->increments('id');
             $table->string('name');
         });
+    }
 
+    public function testOrderByRelationWithoutCallback()
+    {
         $company1 = Company::create(['name' => 'ABC']);
         $user1 = User::create(['company_id' => $company1->id]);
 
         $company2 = Company::create(['name' => 'XYZ']);
         $user2 = User::create(['company_id' => $company2->id]);
-    }
 
-    public function testOrderByRelationWithoutCallback()
-    {
-        $sql = User::orderByRelation('company', 'name')->toSql();
+        $ids = User::orderByRelation('company', 'name')->pluck('id')->toArray();
 
-        dd($sql);
+        $this->assertEquals([$user1->id, $user2->id], $ids);
+
+        $ids = User::orderByRelation('company', 'name', 'desc')->pluck('id')->toArray();
+
+        $this->assertEquals([$user2->id, $user1->id], $ids);
     }
 }
 
