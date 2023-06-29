@@ -2,6 +2,7 @@
 
 namespace Illuminate\Database\Eloquent\Relations;
 
+use Illuminate\Contracts\Database\Eloquent\Orderable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\Concerns\ComparesRelatedModels;
 use Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithDictionary;
 use Illuminate\Database\Eloquent\Relations\Concerns\SupportsDefaultModels;
 
-class BelongsTo extends Relation
+class BelongsTo extends Relation implements Orderable
 {
     use ComparesRelatedModels,
         InteractsWithDictionary,
@@ -390,5 +391,12 @@ class BelongsTo extends Relation
     public function getRelationName()
     {
         return $this->relationName;
+    }
+
+    public function getOrderBySubQuery(string $column)
+    {
+        return $this->related->newQuery()
+            ->select($column)
+            ->whereColumn($this->getQualifiedForeignKeyName(), '=', $this->getQualifiedOwnerKeyName());
     }
 }

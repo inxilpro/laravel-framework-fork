@@ -4,6 +4,7 @@ namespace Illuminate\Database\Eloquent\Concerns;
 
 use BadMethodCallException;
 use Closure;
+use Illuminate\Contracts\Database\Eloquent\Orderable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\RelationNotFoundException;
@@ -589,6 +590,39 @@ trait QueriesRelationships
     public function orWhereBelongsTo($related, $relationshipName = null)
     {
         return $this->whereBelongsTo($related, $relationshipName, 'or');
+    }
+
+    /**
+     * Add an "order by" subquery clause to the query.
+     *
+     * @param  string  $relation
+     * @param  \Closure|string|array|\Illuminate\Contracts\Database\Query\Expression  $column
+     * @param  string  $direction
+     * @param  \Closure  $callback
+     *
+     * @return \Illuminate\Database\Eloquent\Builder|static
+     */
+    public function orderByRelation($relation, $column, $direction = 'asc', Closure $callback = null)
+    {
+        if (is_string($relation)) {
+            if (str_contains($relation, '.')) {
+                throw new InvalidArgumentException('orderByRelation does not support nested relations.');
+            }
+
+            $relation = $this->getRelationWithoutConstraints($relation);
+        }
+
+        if (! $relation instanceof Orderable) {
+            throw new InvalidArgumentException('orderByRelation only supports orderable relations.');
+        }
+
+        $subquery = $relation->getOrderBySubQuery($column);
+
+        if ($callback) {
+            $callback($subquery, $this);
+        }
+
+        return $this->orderBy($subquery, $direction);
     }
 
     /**
