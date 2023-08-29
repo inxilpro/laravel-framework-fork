@@ -431,9 +431,17 @@ class BladeCompiler extends Compiler implements CompilerInterface
             return $value;
         }
 
-        return (new ComponentTagCompiler(
-            $this->classComponentAliases, $this->classComponentNamespaces, $this
-        ))->compile($value);
+        return $this->componentTagCompiler()->compile($value);
+    }
+
+    /**
+     * Get a new component tag compiler instance.
+     *
+     * @return ComponentTagCompiler
+     */
+    public function componentTagCompiler()
+    {
+        return new ComponentTagCompiler($this->classComponentAliases, $this->classComponentNamespaces, $this);
     }
 
     /**
