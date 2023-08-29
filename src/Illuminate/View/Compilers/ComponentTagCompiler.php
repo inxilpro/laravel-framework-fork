@@ -450,33 +450,7 @@ class ComponentTagCompiler
      */
     public function getAttributesFromAttributeString(string $attributeString)
     {
-        $attributeString = $this->parseShortAttributeSyntax($attributeString);
-        $attributeString = $this->parseAttributeBag($attributeString);
-        $attributeString = $this->parseComponentTagClassStatements($attributeString);
-        $attributeString = $this->parseComponentTagStyleStatements($attributeString);
-        $attributeString = $this->parseBindAttributes($attributeString);
-
-        $pattern = '/
-            (?<attribute>[\w\-:.@%]+)
-            (
-                =
-                (?<value>
-                    (
-                        \"[^\"]+\"
-                        |
-                        \\\'[^\\\']+\\\'
-                        |
-                        [^\s>]+
-                    )
-                )
-            )?
-        /x';
-
-        if (! preg_match_all($pattern, $attributeString, $matches, PREG_SET_ORDER)) {
-            return [];
-        }
-
-        return collect($matches)->mapWithKeys(function ($match) {
+        return (new ComponentTagProcessor())->processAttributeString($attributeString, function ($match) {
             $attribute = $match['attribute'];
             $value = $match['value'] ?? null;
 
@@ -501,98 +475,7 @@ class ComponentTagCompiler
             }
 
             return [$attribute => $value];
-        })->toArray();
-    }
-
-    /**
-     * Parses a short attribute syntax like :$foo into a fully-qualified syntax like :foo="$foo".
-     *
-     * @param  string  $value
-     * @return string
-     */
-    protected function parseShortAttributeSyntax(string $value)
-    {
-        $pattern = "/\s\:\\\$(\w+)/x";
-
-        return preg_replace_callback($pattern, function (array $matches) {
-            return " :{$matches[1]}=\"\${$matches[1]}\"";
-        }, $value);
-    }
-
-    /**
-     * Parse the attribute bag in a given attribute string into its fully-qualified syntax.
-     *
-     * @param  string  $attributeString
-     * @return string
-     */
-    protected function parseAttributeBag(string $attributeString)
-    {
-        $pattern = "/
-            (?:^|\s+)                                        # start of the string or whitespace between attributes
-            \{\{\s*(\\\$attributes(?:[^}]+?(?<!\s))?)\s*\}\} # exact match of attributes variable being echoed
-        /x";
-
-        return preg_replace($pattern, ' :attributes="$1"', $attributeString);
-    }
-
-    /**
-     * Parse @class statements in a given attribute string into their fully-qualified syntax.
-     *
-     * @param  string  $attributeString
-     * @return string
-     */
-    protected function parseComponentTagClassStatements(string $attributeString)
-    {
-        return preg_replace_callback(
-            '/@(class)(\( ( (?>[^()]+) | (?2) )* \))/x', function ($match) {
-                if ($match[1] === 'class') {
-                    $match[2] = str_replace('"', "'", $match[2]);
-
-                    return ":class=\"\Illuminate\Support\Arr::toCssClasses{$match[2]}\"";
-                }
-
-                return $match[0];
-            }, $attributeString
-        );
-    }
-
-    /**
-     * Parse @style statements in a given attribute string into their fully-qualified syntax.
-     *
-     * @param  string  $attributeString
-     * @return string
-     */
-    protected function parseComponentTagStyleStatements(string $attributeString)
-    {
-        return preg_replace_callback(
-            '/@(style)(\( ( (?>[^()]+) | (?2) )* \))/x', function ($match) {
-                if ($match[1] === 'style') {
-                    $match[2] = str_replace('"', "'", $match[2]);
-
-                    return ":style=\"\Illuminate\Support\Arr::toCssStyles{$match[2]}\"";
-                }
-
-                return $match[0];
-            }, $attributeString
-        );
-    }
-
-    /**
-     * Parse the "bind" attributes in a given attribute string into their fully-qualified syntax.
-     *
-     * @param  string  $attributeString
-     * @return string
-     */
-    protected function parseBindAttributes(string $attributeString)
-    {
-        $pattern = "/
-            (?:^|\s+)     # start of the string or whitespace between attributes
-            :(?!:)        # attribute needs to start with a single colon
-            ([\w\-:.@]+)  # match the actual attribute name
-            =             # only match attributes that have a value
-        /xm";
-
-        return preg_replace($pattern, ' bind:$1=', $attributeString);
+        });
     }
 
     /**

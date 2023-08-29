@@ -2,6 +2,8 @@
 
 namespace Illuminate\View;
 
+use Illuminate\Support\Collection;
+
 class ComponentTagProcessor
 {
     /**
@@ -200,5 +202,128 @@ class ComponentTagProcessor
     public function processClosingSlotTags(string $value, callable $callback)
     {
         return preg_replace_callback('/<\/\s*x[\-\:]slot[^>]*>/', $callback, $value);
+    }
+
+    /**
+     * Process the given attribute string into an array of attributes.
+     *
+     * @param  string  $value
+     * @param  callable(array{'attribute':string,'value':string|null):array  $callback
+     * @return array
+     */
+    public function processAttributeString(string $value, callable $callback)
+    {
+        $value = $this->parseShortAttributeSyntax($value);
+        $value = $this->parseAttributeBag($value);
+        $value = $this->parseComponentTagClassStatements($value);
+        $value = $this->parseComponentTagStyleStatements($value);
+        $value = $this->parseBindAttributes($value);
+
+        $pattern = '/
+            (?<attribute>[\w\-:.@%]+)
+            (
+                =
+                (?<value>
+                    (
+                        \"[^\"]+\"
+                        |
+                        \\\'[^\\\']+\\\'
+                        |
+                        [^\s>]+
+                    )
+                )
+            )?
+        /x';
+
+        if (! preg_match_all($pattern, $value, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        return Collection::make($matches)->mapWithKeys($callback)->toArray();
+    }
+
+    /**
+     * Parses a short attribute syntax like :$foo into a fully-qualified syntax like :foo="$foo".
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function parseShortAttributeSyntax(string $value)
+    {
+        $pattern = "/\s\:\\\$(\w+)/x";
+
+        return preg_replace_callback($pattern, fn(array $matches) => " :{$matches[1]}=\"\${$matches[1]}\"", $value);
+    }
+
+    /**
+     * Parse the attribute bag in a given attribute string into its fully-qualified syntax.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function parseAttributeBag(string $value)
+    {
+        $pattern = "/
+            (?:^|\s+)                                        # start of the string or whitespace between attributes
+            \{\{\s*(\\\$attributes(?:[^}]+?(?<!\s))?)\s*\}\} # exact match of attributes variable being echoed
+        /x";
+
+        return preg_replace($pattern, ' :attributes="$1"', $value);
+    }
+
+    /**
+     * Parse @class statements in a given attribute string into their fully-qualified syntax.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function parseComponentTagClassStatements(string $value)
+    {
+        return preg_replace_callback('/@(class)(\( ( (?>[^()]+) | (?2) )* \))/x', function ($match) {
+            if ($match[1] === 'class') {
+                $match[2] = str_replace('"', "'", $match[2]);
+
+                return ":class=\"\Illuminate\Support\Arr::toCssClasses{$match[2]}\"";
+            }
+
+            return $match[0];
+        }, $value);
+    }
+
+    /**
+     * Parse @style statements in a given attribute string into their fully-qualified syntax.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function parseComponentTagStyleStatements(string $value)
+    {
+        return preg_replace_callback('/@(style)(\( ( (?>[^()]+) | (?2) )* \))/x', function ($match) {
+            if ($match[1] === 'style') {
+                $match[2] = str_replace('"', "'", $match[2]);
+
+                return ":style=\"\Illuminate\Support\Arr::toCssStyles{$match[2]}\"";
+            }
+
+            return $match[0];
+        }, $value);
+    }
+
+    /**
+     * Parse the "bind" attributes in a given attribute string into their fully-qualified syntax.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function parseBindAttributes(string $value)
+    {
+        $pattern = "/
+            (?:^|\s+)     # start of the string or whitespace between attributes
+            :(?!:)        # attribute needs to start with a single colon
+            ([\w\-:.@]+)  # match the actual attribute name
+            =             # only match attributes that have a value
+        /xm";
+
+        return preg_replace($pattern, ' bind:$1=', $value);
     }
 }
