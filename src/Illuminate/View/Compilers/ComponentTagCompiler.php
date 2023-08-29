@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\Factory;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Illuminate\View\AnonymousComponent;
+use Illuminate\View\ComponentTagProcessor;
 use Illuminate\View\DynamicComponent;
 use Illuminate\View\ViewFinderInterface;
 use InvalidArgumentException;
@@ -103,58 +104,13 @@ class ComponentTagCompiler
      */
     protected function compileOpeningTags(string $value)
     {
-        $pattern = "/
-            <
-                \s*
-                x[-\:]([\w\-\:\.]*)
-                (?<attributes>
-                    (?:
-                        \s+
-                        (?:
-                            (?:
-                                @(?:class)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                @(?:style)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                \{\{\s*\\\$attributes(?:[^}]+?)?\s*\}\}
-                            )
-                            |
-                            (?:
-                                (\:\\\$)(\w+)
-                            )
-                            |
-                            (?:
-                                [\w\-:.@%]+
-                                (
-                                    =
-                                    (?:
-                                        \\\"[^\\\"]*\\\"
-                                        |
-                                        \'[^\']*\'
-                                        |
-                                        [^\'\\\"=<>]+
-                                    )
-                                )?
-                            )
-                        )
-                    )*
-                    \s*
-                )
-                (?<![\/=\-])
-            >
-        /x";
-
-        return preg_replace_callback($pattern, function (array $matches) {
+        return (new ComponentTagProcessor())->processOpeningTags($value, function (array $matches) {
             $this->boundAttributes = [];
 
             $attributes = $this->getAttributesFromAttributeString($matches['attributes']);
 
-            return $this->componentString($matches[1], $attributes);
-        }, $value);
+            return $this->componentString($matches['component'], $attributes);
+        });
     }
 
     /**
@@ -167,58 +123,13 @@ class ComponentTagCompiler
      */
     protected function compileSelfClosingTags(string $value)
     {
-        $pattern = "/
-            <
-                \s*
-                x[-\:]([\w\-\:\.]*)
-                \s*
-                (?<attributes>
-                    (?:
-                        \s+
-                        (?:
-                            (?:
-                                @(?:class)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                @(?:style)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                \{\{\s*\\\$attributes(?:[^}]+?)?\s*\}\}
-                            )
-                            |
-                            (?:
-                                (\:\\\$)(\w+)
-                            )
-                            |
-                            (?:
-                                [\w\-:.@%]+
-                                (
-                                    =
-                                    (?:
-                                        \\\"[^\\\"]*\\\"
-                                        |
-                                        \'[^\']*\'
-                                        |
-                                        [^\'\\\"=<>]+
-                                    )
-                                )?
-                            )
-                        )
-                    )*
-                    \s*
-                )
-            \/>
-        /x";
-
-        return preg_replace_callback($pattern, function (array $matches) {
+        return (new ComponentTagProcessor())->processSelfClosingTags($value, function (array $matches) {
             $this->boundAttributes = [];
 
             $attributes = $this->getAttributesFromAttributeString($matches['attributes']);
 
             return $this->componentString($matches[1], $attributes)."\n@endComponentClass##END-COMPONENT-CLASS##";
-        }, $value);
+        });
     }
 
     /**
@@ -489,7 +400,7 @@ class ComponentTagCompiler
      */
     protected function compileClosingTags(string $value)
     {
-        return preg_replace("/<\/\s*x[-\:][\w\-\:\.]*\s*>/", ' @endComponentClass##END-COMPONENT-CLASS##', $value);
+        return (new ComponentTagProcessor())->processClosingTags($value, fn() => ' @endComponentClass##END-COMPONENT-CLASS##');
     }
 
     /**
@@ -500,51 +411,9 @@ class ComponentTagCompiler
      */
     public function compileSlots(string $value)
     {
-        $pattern = "/
-            <
-                \s*
-                x[\-\:]slot
-                (?:\:(?<inlineName>\w+(?:-\w+)*))?
-                (?:\s+name=(?<name>(\"[^\"]+\"|\\\'[^\\\']+\\\'|[^\s>]+)))?
-                (?:\s+\:name=(?<boundName>(\"[^\"]+\"|\\\'[^\\\']+\\\'|[^\s>]+)))?
-                (?<attributes>
-                    (?:
-                        \s+
-                        (?:
-                            (?:
-                                @(?:class)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                @(?:style)(\( (?: (?>[^()]+) | (?-1) )* \))
-                            )
-                            |
-                            (?:
-                                \{\{\s*\\\$attributes(?:[^}]+?)?\s*\}\}
-                            )
-                            |
-                            (?:
-                                [\w\-:.@]+
-                                (
-                                    =
-                                    (?:
-                                        \\\"[^\\\"]*\\\"
-                                        |
-                                        \'[^\']*\'
-                                        |
-                                        [^\'\\\"=<>]+
-                                    )
-                                )?
-                            )
-                        )
-                    )*
-                    \s*
-                )
-                (?<![\/=\-])
-            >
-        /x";
+        $processor = new ComponentTagProcessor();
 
-        $value = preg_replace_callback($pattern, function ($matches) {
+        $value = $processor->processOpeningSlotTags($value, function ($matches) {
             $name = $this->stripQuotes($matches['inlineName'] ?: $matches['name'] ?: $matches['boundName']);
 
             if (Str::contains($name, '-') && ! empty($matches['inlineName'])) {
@@ -562,15 +431,15 @@ class ComponentTagCompiler
 
             // If an inline name was provided and a name or bound name was *also* provided, we will assume the name should be an attribute...
             if (! empty($matches['inlineName']) && (! empty($matches['name']) || ! empty($matches['boundName']))) {
-                $attributes = ! empty($matches['name'])
-                    ? array_merge($attributes, $this->getAttributesFromAttributeString('name='.$matches['name']))
-                    : array_merge($attributes, $this->getAttributesFromAttributeString(':name='.$matches['boundName']));
+                $attributes = ! empty($matches['name']) ? array_merge($attributes,
+                    $this->getAttributesFromAttributeString('name='.$matches['name'])) : array_merge($attributes,
+                    $this->getAttributesFromAttributeString(':name='.$matches['boundName']));
             }
 
             return " @slot({$name}, null, [".$this->attributesToString($attributes).']) ';
-        }, $value);
+        });
 
-        return preg_replace('/<\/\s*x[\-\:]slot[^>]*>/', ' @endslot', $value);
+        return $processor->processClosingSlotTags($value, fn() => ' @endslot');
     }
 
     /**
@@ -579,7 +448,7 @@ class ComponentTagCompiler
      * @param  string  $attributeString
      * @return array
      */
-    protected function getAttributesFromAttributeString(string $attributeString)
+    public function getAttributesFromAttributeString(string $attributeString)
     {
         $attributeString = $this->parseShortAttributeSyntax($attributeString);
         $attributeString = $this->parseAttributeBag($attributeString);
